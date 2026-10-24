@@ -20,7 +20,7 @@ It runs entirely on **free AI model tiers** (Gemini, Groq, Cerebras and seven mo
 
 ## Quick start
 
-**On Windows, the easiest way** is the desktop app (beta): download `Kadhai-Beta-Setup` from the [latest release](https://github.com/Madhuhas/kadhai/releases/latest) and run it. No Node.js needed. The installer is not code-signed yet, so Windows may warn about an unknown publisher: choose *More info*, then *Run anyway*.
+**On Windows, the easiest way** is the desktop app (beta): download `Kadhai-Beta-Setup` from the [releases page](https://github.com/Madhuhas/kadhai/releases) and run it. No Node.js needed. The installer is not code-signed yet, so Windows may warn about an unknown publisher: choose *More info*, then *Run anyway*.
 
 **On any system**, you need [Node.js](https://nodejs.org) 20 or newer and [Git](https://git-scm.com) (Git also powers View changes and Undo):
 
