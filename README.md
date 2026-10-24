@@ -1,5 +1,9 @@
 # Kadhai
 
+[![Tests](https://github.com/Madhuhas/kadhai/actions/workflows/test.yml/badge.svg)](https://github.com/Madhuhas/kadhai/actions/workflows/test.yml)
+[![Release](https://img.shields.io/github/v/release/Madhuhas/kadhai?include_prereleases&label=release)](https://github.com/Madhuhas/kadhai/releases)
+[![License](https://img.shields.io/github/license/Madhuhas/kadhai)](LICENSE)
+
 **A local-first workspace where a crew of AI agents builds, tests and automates for you. Your models, your keys, your machine.**
 
 > **Beta.** Kadhai works and is used every day, and it is still being polished. Expect rough edges, and please report what breaks.
