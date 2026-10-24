@@ -10,7 +10,7 @@ It runs entirely on **free AI model tiers** (Gemini, Groq, Cerebras and seven mo
 
 ## Highlights
 
-- **A crew, not a chatbot.** Planning, coding, checking and fixing are separate agents with separate jobs, coordinated by plain code. Every step has a fixed budget of model calls, so runs are predictable and cheap. Hire your own specialists, or have the Chef write one for you.
+- **A crew, not a chatbot.** Planning, coding, checking and fixing are separate agents with separate jobs, coordinated by plain code. Every step has a fixed budget of model calls, so runs are predictable and cheap. Hire your own specialists, or have the Chef write one for you, and switch off any agent a job does not need.
 - **Free by default.** One small Node process with a single dependency, no GPU, no build step. Automatic failover across providers keeps going when a free tier says "slow down".
 - **Safe by design.** Listens only on your own computer. The crew cannot leave its folder. Commands wait for your approval. Every secret is encrypted on disk. Every run can be diffed and undone.
 - **Flows.** Draw automations on a canvas (schedules, feeds, webhooks, AI, logic, HTTP and fifteen built-in services), or just describe one in words and let the Chef draw it. Try any flow safely first: reads run for real, anything that would send or change something is held back and shown.
@@ -20,9 +20,13 @@ It runs entirely on **free AI model tiers** (Gemini, Groq, Cerebras and seven mo
 
 ## Quick start
 
-You need [Node.js](https://nodejs.org) 20 or newer. [Git](https://git-scm.com) is optional but recommended (it powers View changes and Undo).
+**On Windows, the easiest way** is the desktop app (beta): download `Kadhai-Beta-Setup` from the [latest release](https://github.com/Madhuhas/kadhai/releases/latest) and run it. No Node.js needed. The installer is not code-signed yet, so Windows may warn about an unknown publisher: choose *More info*, then *Run anyway*.
+
+**On any system**, you need [Node.js](https://nodejs.org) 20 or newer and [Git](https://git-scm.com) (Git also powers View changes and Undo):
 
 ```bash
+git clone https://github.com/Madhuhas/kadhai.git
+cd kadhai
 npm install
 npm run demo     # try it with simulated models, no account needed
 ```
