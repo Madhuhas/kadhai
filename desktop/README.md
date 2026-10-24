@@ -40,8 +40,8 @@ The installer is not code-signed, so Windows SmartScreen warns about an unknown 
 
 ## The icon
 
-`build/icon.png` is drawn from `build/icon.html`: the `\___/` mark with steam, in text like the rest of Kadhai. It is the one picture Kadhai has, used only for the window, the taskbar and the installer, never inside the app. To redraw it after changing the HTML:
+`build/icon.svg` is the source: the `\___/` pot from Kadhai's text mark, with steam, on a dark tile. It is the same picture as the website's tab icon. It is the one picture Kadhai has, used only for the window, the taskbar and the installer, never inside the app. `build/icon.png` is a 512-pixel render of it, which electron-builder turns into the Windows icon. To redraw it after changing the SVG, open it in a browser at 512 by 512 pixels and save a screenshot with a transparent background, for example:
 
 ```bash
-chrome --headless=new --default-background-color=00000000 --window-size=512,512 --screenshot=build/icon.png build/icon.html
+chrome --headless=new --default-background-color=00000000 --window-size=512,512 --screenshot=build/icon.png <a page showing build/icon.svg at 512 x 512>
 ```

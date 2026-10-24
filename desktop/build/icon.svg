@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- The app icon (the same as the website's tab icon): the \___/ pot from Kadhai's text mark, with steam, on a dark tile. -->
+  <rect width="64" height="64" rx="14" fill="#141414"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M23 25c-3-3 3-6 0-9s3-6 0-9" stroke="#8a8a8a" stroke-width="3.5"/>
+    <path d="M32 25c-3-3 3-6 0-9s3-6 0-9" stroke="#8a8a8a" stroke-width="3.5"/>
+    <path d="M41 25c-3-3 3-6 0-9s3-6 0-9" stroke="#8a8a8a" stroke-width="3.5"/>
+    <path d="M9 31 18 52h28l9-21" stroke="#f2f2f2" stroke-width="6.5"/>
+  </g>
+</svg>
