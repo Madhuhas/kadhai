@@ -1,6 +1,8 @@
 # Asks each new contributor to sign CLA.md once, by posting one sentence on their pull request.
 # Signatures are stored in signatures/version1/cla.json on the branch below (created on the first
-# signature; do not create it by hand). That branch must not be protected, or the bot cannot write.
+# signature; do not create it by hand). The bot adds ordinary commits there, so the branch may block
+# force-pushes and deletion (the "Keep main's history" ruleset does), but must not require pull requests
+# or status checks, or the bot cannot write.
 name: CLA
 
 on:
