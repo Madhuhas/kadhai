@@ -80,7 +80,7 @@ Pull requests for features that were not agreed on may be closed, however good t
 
 These are product requirements, not preferences. A change that breaks one will not be merged, so check yours against them early. The [developer guide](docs/DEVELOPERS.md) explains each one and the reasons behind it.
 
-- **Free to run, light to run.** Kadhai must work fully with free API keys only, on an ordinary laptop (a 7th-generation i7 with 12 GB of RAM and no graphics card). Paid keys and subscriptions are optional extras, labelled as paid. No model runs inside Kadhai itself.
+- **Free to run, light to run.** Kadhai must work fully with free API keys only, on an ordinary laptop with no graphics card. Paid keys and subscriptions are optional extras, labelled as paid. No model runs inside Kadhai itself.
 - **One dependency.** `express` is the only package the app needs. A new dependency needs a very strong reason and the maintainer's agreement first. (The desktop app in `desktop/` keeps its own, separate packages.)
 - **No build step and no framework.** The dashboard in `public/` is hand-written JavaScript modules, served as they are. Nothing is loaded from another site: no web fonts, no CDNs.
 - **Local only.** The server listens only on this computer and refuses other machines and other websites. Nothing calls in from outside.
