@@ -20,7 +20,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^5.3.0"
   },
   "author": "Kotini Sai Madhuhas",
   "license": "AGPL-3.0-or-later"
