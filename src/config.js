@@ -48,6 +48,9 @@ export const licenseText = () => fs.readFileSync(path.join(ROOT, 'LICENSE'), 'ut
  * github.com/open-free-llm-api/awesome-freellm-apis; each endpoint was probed
  * and its default models taken from the provider's live /models in October 2026.
  */
+/** The simulated models of demo mode: canned answers from mockProvider.js, no key, nothing sent anywhere. */
+export const MOCK_PROVIDERS = [{ id: 'mock', label: 'Mock', baseUrl: 'mock://local', keys: ['demo'], models: ['alpha', 'beta'] }];
+
 export const PROVIDER_PRESETS = {
   gemini: {
     label: 'Gemini',
@@ -315,7 +318,7 @@ export function loadConfig(overrides = {}) {
     providers:
       overrides.providers ??
       (mock
-        ? [{ id: 'mock', label: 'Mock', baseUrl: 'mock://local', keys: ['demo'], models: ['alpha', 'beta'] }]
+        ? MOCK_PROVIDERS
         : readProviders(keysFile, overrides.cliAgents ?? {})),
     limits: {
       maxSubtasks: int('MAX_SUBTASKS', 6),

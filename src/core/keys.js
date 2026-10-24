@@ -1,4 +1,5 @@
-import { detectProvider, providerCatalog, readProviders } from '../config.js';
+import { MOCK_PROVIDERS, detectProvider, providerCatalog, readProviders } from '../config.js';
+import { mockCompletion } from './mockProvider.js';
 import { loadStoredKeys, saveStoredKeys, keyId, maskKey, verifyKey } from './keyStore.js';
 import { CLI_AGENTS, complete, onPath } from './cliProvider.js';
 
@@ -39,6 +40,22 @@ export function createKeyService({ config, dispatcher, bus, verify = verifyKey }
   };
 
   return {
+    /**
+     * "Try the demo": demo mode for someone who has no key yet, so the desktop app can be looked around
+     * like `npm run demo`. Only while nothing is set up, so pretend answers never mix with real ones.
+     * Adding a key (or switching on a subscription) leaves it, exactly as it leaves demo mode.
+     */
+    practice() {
+      if (config.mock) return { demo: true };
+      if (config.providers.length) throw fail('The demo is for before you add a key: real models are already set up.', 409);
+      config.mock = true;
+      config.providers = MOCK_PROVIDERS;
+      dispatcher.completion = mockCompletion;
+      dispatcher.setProviders(config.providers);
+      bus.publish('keys:update', {});
+      return { demo: true };
+    },
+
     /** The key file was changed by another room: take up what it holds now. A no-op when nothing differs. */
     reload() {
       if (config.mock) return;

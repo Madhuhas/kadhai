@@ -664,6 +664,8 @@ textarea:focus, input[type='text']:focus, input[type='password']:focus {
 .key-row-tier { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-small); color: var(--muted); }
 .key-row:hover .btn { background: var(--btn-on-bg); border-color: var(--text); }
 .key-note { margin-top: var(--s3) !important; font-size: var(--t-small); }
+.key-demo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin-bottom: var(--s3); padding: var(--s3); border: 1px dashed var(--line); border-radius: var(--r-m); background: var(--raised); font-size: var(--t-small); }
+.key-demo p { flex: 1 1 260px; margin: 0; line-height: 1.5; }
 .key-tip { margin: var(--s2) 0 0; padding: var(--s2) var(--s3); border: 1px solid color-mix(in srgb, var(--warn) 50%, var(--line)); border-radius: var(--r-m); color: var(--warn); font-size: var(--t-small); line-height: 1.5; }
 .key-card header strong { font-size: var(--t-body); font-weight: 600; }
 .key-card a { font-size: var(--t-small); }

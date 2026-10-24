@@ -314,6 +314,8 @@ export function apiRouter(engine) {
   api.get('/keys', (_req, res) => res.json({ providers: keys.list(), subscriptions: keys.subscriptions(), settings: keys.settings() }));
   // A key pasted without choosing a provider: recognised by how it starts.
   api.post('/keys', wrap(async (req, res) => res.json(await keys.addAny(req.body?.key))));
+  // No key yet: demo mode, with simulated models (refused once real models are set up).
+  api.post('/practice', wrap(async (_req, res) => res.json(keys.practice())));
   // Paid keys: asked first or last, and a daily ceiling in tokens.
   api.put('/keys-settings', wrap(async (req, res) => res.json(await keys.setSettings(req.body ?? {}))));
   // Any other OpenAI-compatible server, added by its address.

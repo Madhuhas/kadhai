@@ -174,7 +174,7 @@ function welcome() {
     h('pre', { class: 'banner', ariaLabel: 'Kadhai' }, BANNER),
     h('div', null, h('b', null, 'What should we cook?'), 'Type what you want built in the box below. The crew plans it, writes it and checks it, and you can watch them in the kitchen.'),
     h('div', { class: 'tip' }, 'Tip: start a line with ', h('code', null, '!'), ' to run a shell command yourself.'),
-    notice && h('div', { class: 'notice' }, h('span', null, notice), button('Add API keys', 'primary', () => emit('openkeys'))),
+    notice && h('div', { class: 'notice' }, h('span', null, notice), button('Add API keys', 'primary', () => emit('openkeys')), !app.mock && button('Try the demo', '', () => emit('trydemo'))),
   );
 }
 

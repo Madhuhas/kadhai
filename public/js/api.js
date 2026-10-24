@@ -125,6 +125,7 @@ export const api = {
   configure: (id, settings) => request('PUT', `/api/crew/${seg(id)}/settings`, settings),
   keys: () => request('GET', '/api/keys'),
   addAnyKey: (key) => request('POST', '/api/keys', { key }),
+  practice: () => request('POST', '/api/practice'),
   keySettings: (settings) => request('PUT', '/api/keys-settings', settings),
   addEndpoint: (endpoint) => request('POST', '/api/endpoints', endpoint),
   removeEndpoint: (id) => request('DELETE', `/api/endpoints/${seg(id)}`),

@@ -65,6 +65,8 @@ npm run demo
 
 Open <http://localhost:4747> in your browser. Demo mode simulates the models, so you can see everything work without a key: type any request in the chat on the right (for example *make a small web page that says hello*), press Enter, and watch the Chef plan, the cooks write files, a command wait for your approval, and the Taster review. The demo even fakes a provider running out of quota now and then, so you can see the crew switch to the next one.
 
+The same demo is one click away in the desktop app, or after `npm start`: while no key is set up, the **keys** dialog and the chat offer **Try the demo**. It writes a small demo page into the open folder. Add a key whenever you like and Kadhai switches to real models.
+
 ### Start it for real
 
 ```bash

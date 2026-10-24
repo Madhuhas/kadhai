@@ -189,6 +189,27 @@ test('review: a failing verification forces a fix round even if the Reviewer app
   assert.match(result.reply, /Review:\*\* 1 issue\(s\) found, fixed by the Fixer/);
 });
 
+test('keys: "Try the demo" gives simulated models only while nothing is set up, and a key ends it', async (t) => {
+  for (const name of ['GROQ_API_KEYS', 'GROQ_API_KEY', 'GROQ_MODELS']) delete process.env[name];
+  const keysFile = path.join(await tmpDir('keys'), 'keys.local.json');
+  const engine = await createEngine({ workspaceDir: await tmpDir('ws'), keysFile, verifyKey: async () => ({ rejected: false, verified: true, models: [] }), mcp: false });
+  t.after(() => engine.close());
+  const { keys, dispatcher } = engine;
+  if ((await engine.snapshot()).app.hasProviders) return t.skip('keys in this environment');
+
+  assert.deepEqual(keys.practice(), { demo: true });
+  const snap = await engine.snapshot();
+  assert.equal(snap.app.mock, true);
+  assert.ok(dispatcher.routes.length > 0 && dispatcher.routes.every((r) => r.provider === 'mock'), 'only the simulated models');
+  assert.deepEqual(keys.practice(), { demo: true }, 'pressing it twice changes nothing');
+
+  // A real key leaves the demo, as it leaves demo mode.
+  await keys.add('groq', 'gsk_test_0123456789abcdefWXYZ');
+  assert.equal((await engine.snapshot()).app.mock, false);
+  assert.ok(dispatcher.routes.every((r) => r.provider === 'groq'));
+  assert.throws(() => keys.practice(), /before you add a key/, 'never mixed with real models');
+});
+
 test('keys: added from the dashboard, verified, used live, masked, and removable', async (t) => {
   for (const name of ['GROQ_API_KEYS', 'GROQ_API_KEY', 'GROQ_MODELS']) delete process.env[name];
   const keysFile = path.join(await tmpDir('keys'), 'keys.local.json');

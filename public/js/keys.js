@@ -375,6 +375,12 @@ export function initKeys() {
       };
       const scroll = body.scrollTop;
       body.replaceChildren(
+        // Nothing set up yet: offer a look around first, with pretend answers and no key.
+        ...(!state.app.hasProviders && !state.app.mock
+          ? [h('div', { class: 'key-demo' },
+              h('p', null, h('b', null, 'No key yet? '), 'Try the demo first: the crew works with pretend answers instead of a real AI, so you can see how everything works. It needs no key and sends nothing anywhere; it writes a small demo page into the open folder. Add a key any time to switch to real models.'),
+              h('button', { class: 'btn', type: 'button', onclick: tryDemo }, 'Try the demo'))]
+          : []),
         h('p', { class: 'muted' }, 'Any key works here: free tiers, paid accounts, a subscription CLI, a model on this computer. Add several and Kadhai switches to the next when one hits its limit. Keys are used straight away, with no restart.'),
         anyKeyForm(render),
         h('h4', null, 'subscriptions you already pay for'),
@@ -412,10 +418,21 @@ export function initKeys() {
     if (!dialog.open) dialog.showModal();
   };
 
+  async function tryDemo() {
+    try {
+      await api.practice();
+      dialog.close();
+      toast('Demo mode: pretend answers, no key used. Add a key any time for real models.');
+    } catch (err) {
+      toast(err.message, 'err');
+    }
+  }
+
   $('#keys-btn').onclick = open;
   $('#keys-close').onclick = () => dialog.close();
   dialog.addEventListener('click', (e) => e.target === dialog && dialog.close());
   on('openkeys', open);
+  on('trydemo', tryDemo);
   on('sync', () => {
     // First visit with nothing configured: lead with the one thing that is needed.
     if (!autoOpened && !state.app.hasProviders && !state.app.mock) {
