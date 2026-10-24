@@ -1,0 +1,27 @@
+{
+  "name": "kadhai",
+  "version": "1.0.0-beta.1",
+  "description": "A local-first workspace where a crew of AI agents builds, tests and automates for you. Your models, your keys, your machine.",
+  "type": "module",
+  "main": "server.js",
+  "bin": {
+    "kadhai-mcp": "bin/mcp-server.js",
+    "kadhai-acp": "bin/acp-agent.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "demo": "node server.js --mock",
+    "mcp": "node bin/mcp-server.js",
+    "acp": "node bin/acp-agent.js",
+    "test": "node --test test/core.test.js test/features.test.js test/hardening.test.js test/flame.test.js test/runs.test.js test/flows.test.js test/agents.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "author": "Kotini Sai Madhuhas",
+  "license": "AGPL-3.0-or-later"
+}

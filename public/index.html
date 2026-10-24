@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kadhai</title>
+  <!-- No pictures anywhere, the tab icon included. -->
+  <link rel="icon" href="data:,">
+  <script src="js/theme-boot.js"></script>
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/looks.css">
+</head>
+<body>
+  <!--
+    A small desktop: a taskbar, and three windows under it.
+      taskbar  the crew - click anyone to open them in a tab
+      left     files of the folder that is open
+      middle   the stage: the kitchen (live), or a file you opened
+      right    chat: you talk to the Chef here
+  -->
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-logo" aria-hidden="true">\___/</span>
+        <strong>kadhai</strong>
+        <!-- Shown while the version is a pre-release (1.0.0-beta.1): settings.js reads it from the version. -->
+        <span id="beta-tag" class="beta-tag" title="Kadhai is in beta: it works, and it is still being polished" hidden>beta</span>
+      </div>
+
+      <!-- Kitchens (rooms in the code): other folders open at the same time, each in a window of its own. -->
+      <details id="rooms-menu" class="menu rooms-menu">
+        <summary class="pill" title="Kitchens: work on several folders at once, each with its own crew and its own window">kitchens <span id="rooms-count" class="badge">1</span></summary>
+        <div id="rooms-list" class="menu-panel rooms-list"></div>
+      </details>
+
+      <nav class="crew" aria-label="The crew">
+        <!-- Everyone, in one list: it stays easy to scan however many agents there are. -->
+        <details id="crew-menu" class="menu">
+          <summary class="pill" title="The crew: everyone, what they are doing, and hiring">crew <span id="crew-count" class="badge"></span></summary>
+          <div id="crew-list" class="menu-panel crew-list"></div>
+        </details>
+        <!-- Whoever is busy right now also gets a button of their own. -->
+        <div id="crew" class="crew-active"></div>
+      </nav>
+
+      <div class="top-actions">
+        <button id="route-pill" class="pill" title="Providers: which model is in use, limits and failover">
+          <span id="conn-dot" class="dot"></span>
+          <span id="route-label">connecting…</span>
+        </button>
+        <button id="term-btn" class="pill" title="Terminal: run commands in the open folder, and see the crew's (Ctrl+`)">terminal<span id="term-count" class="badge warn" hidden></span></button>
+        <button id="keys-btn" class="pill" title="API keys">keys</button>
+        <button id="flows-btn" class="pill" title="Flows: tasks in a row that start on a schedule, on a trigger, or when you press Run">flows<span id="flows-count" class="badge on" hidden></span></button>
+        <button id="mcp-btn" class="pill" title="Connections: GitHub, Google, Notion, web search and more for the crew to use">connect<span id="mcp-count" class="badge on" hidden></span></button>
+        <!-- Tools to the left of the line, settings to the right. -->
+        <span class="bar-gap" aria-hidden="true"></span>
+        <!-- Low flame saves tokens (free keys); high flame lets everything out (paid keys). -->
+        <details id="flame-menu" class="menu">
+          <summary id="flame-pill" class="pill flame-pill" title="Low flame saves tokens; high flame uses more for better results">low flame</summary>
+          <div id="flame-panel" class="menu-panel flame-panel"></div>
+        </details>
+        <!-- Locked: the default grid. Unlocked: drag window edges, show any window full screen. -->
+        <button id="layout-btn" class="pill" type="button" aria-label="Layout locked" title="Unlock to resize the windows and open any of them full screen"><span class="lock-icon" aria-hidden="true"></span></button>
+        <!-- The things used now and then: one menu instead of three more buttons. -->
+        <details id="more-menu" class="menu">
+          <summary class="pill" title="Browser, theme and about">more</summary>
+          <div class="menu-panel more-panel">
+            <!-- On a phone the taskbar keeps only kitchens, crew, the flame and this menu; the rest moves here. -->
+            <button class="menu-item phone-only" type="button" data-proxy="term-btn">terminal <span class="muted">run commands in the folder</span></button>
+            <button class="menu-item phone-only" type="button" data-proxy="keys-btn">keys <span class="muted">models and API keys</span></button>
+            <button class="menu-item phone-only" type="button" data-proxy="flows-btn">flows <span class="muted">tasks that start on their own</span></button>
+            <button class="menu-item phone-only" type="button" data-proxy="mcp-btn">connect <span class="muted">apps for the crew to use</span></button>
+            <button class="menu-item phone-only" type="button" data-proxy="route-pill">providers <span class="muted">which model is in use</span></button>
+            <button id="more-layout" class="menu-item phone-only" type="button" data-proxy="layout-btn">unlock layout <span class="muted">show a window full screen</span></button>
+            <button id="browser-btn" class="menu-item" type="button" title="A page on this computer - the folder's preview, or a dev server - in a tab">browser <span class="muted">open a page in a tab</span></button>
+            <button id="about-btn" class="menu-item" type="button" title="Version, where it runs, what is set up">about <span class="muted">version and settings</span></button>
+            <label>Theme<select id="theme-select" class="select"></select></label>
+            <label>Accent colour <span class="muted">(double-click to reset)</span><input id="accent-pick" class="accent-pick" type="color"></label>
+          </div>
+        </details>
+      </div>
+    </header>
+
+    <section class="chat-col" aria-label="Chat">
+      <div class="panel-head"><span>chat.log</span><span class="spacer"></span><span id="brand-sub" class="head-note"></span><button id="chat-max" class="icon-btn win-max" data-win="chat" type="button" hidden>[]</button></div>
+      <div id="chat" class="chat" aria-live="polite"></div>
+      <div id="chat-active" class="chat-active" hidden></div>
+      <div id="queue" class="queue" hidden></div>
+      <form id="chat-form" class="chat-form">
+        <div id="attachments" class="attach-list" hidden></div>
+        <textarea id="chat-input" rows="2" placeholder="What should we cook? Describe it in plain words…" aria-label="Message to the crew"></textarea>
+        <div class="chat-controls">
+          <button id="attach-btn" type="button" class="btn sm quiet" title="Attach files (or drop or paste them here)">+ attach</button>
+          <input id="attach-input" aria-label="Files to attach" type="file" multiple hidden>
+          <select id="exec-mode" class="select" title="May agents run shell commands in this folder?" aria-label="Agent command execution">
+            <option value="ask">Ask before commands</option>
+            <option value="auto">Run commands freely</option>
+            <option value="off">No commands</option>
+          </select>
+          <label id="agent-shell" class="agent-shell" hidden title="High flame: subscription CLIs work as agents on a copy of this folder. Tick to let them run their own commands too, for this task only. Their commands do not wait for your approval and are not sandboxed."><input id="agent-shell-box" type="checkbox"> agents run commands</label>
+          <span class="spacer"></span>
+          <button id="chat-stop" type="button" class="btn danger" hidden>Stop</button>
+          <button id="chat-send" class="btn primary">Send</button>
+        </div>
+      </form>
+    </section>
+
+    <main class="stage" aria-label="Stage">
+      <div class="stage-head">
+        <div id="tabs" class="tabs" role="tablist"></div>
+        <button id="stage-max" class="icon-btn win-max" data-win="stage" type="button" hidden>[]</button>
+      </div>
+      <div id="file-bar" class="file-bar" hidden>
+        <span id="file-path" class="file-path"></span>
+        <span id="file-meta" class="muted"></span>
+        <span class="spacer"></span>
+        <button id="file-run" class="btn sm" hidden title="Run this file">Run</button>
+        <button id="file-preview" class="btn sm" hidden title="Open in a new tab">Preview</button>
+        <button id="file-edit" class="btn sm" hidden>Edit</button>
+        <button id="file-save" class="btn sm primary" hidden>Save</button>
+        <button id="file-cancel" class="btn sm" hidden>Cancel</button>
+      </div>
+      <div id="file-body" class="stage-body"></div>
+
+      <!-- The browser tab: a page on this computer in a frame of its own origin. -->
+      <section id="browser-view" class="browser-view" hidden>
+        <form id="browser-form" class="browser-bar">
+          <button id="browser-back" class="btn sm" type="button" title="Back" aria-label="Back" disabled>&lt;</button>
+          <button id="browser-forward" class="btn sm" type="button" title="Forward" aria-label="Forward" disabled>&gt;</button>
+          <button id="browser-reload" class="btn sm" type="button" title="Reload" aria-label="Reload">reload</button>
+          <input id="browser-address" type="text" spellcheck="false" autocomplete="off" aria-label="Address" placeholder="localhost:3000, or /page.html in the folder">
+          <span id="browser-live" class="browser-live" title="This page is the folder's preview: it reloads when files change" hidden>live</span>
+          <button id="browser-out" class="btn sm" type="button" title="Open in your own browser">open outside</button>
+        </form>
+        <!-- Errors the page reported (pages from the folder only): read them, or hand them to the crew. -->
+        <div id="browser-errors" class="browser-errors" role="status" hidden></div>
+        <iframe id="browser-frame" class="browser-frame" title="Page preview" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads" referrerpolicy="no-referrer"></iframe>
+      </section>
+
+      <!-- An agent, opened as a tab: what it is doing, what it has used, and how to steer it. -->
+      <section id="agent-view" class="agent-view" hidden>
+        <div class="agent-head">
+          <span id="insp-avatar" class="insp-avatar"></span>
+          <div class="agent-title">
+            <strong id="insp-name"></strong>
+            <span id="insp-state" class="badge"></span>
+          </div>
+          <span class="spacer"></span>
+          <button id="insp-duty" class="btn sm" type="button" title="A switched-off agent is given no work: its steps go to another cook, and with the Taster off there is no review">Switch off</button>
+          <button id="insp-edit" class="btn sm" title="Change this agent's colour, model and skills">Edit agent</button>
+          <button id="insp-remove" class="btn sm danger" type="button" title="Remove this agent from the crew for good" hidden>Remove</button>
+        </div>
+        <div id="insp-task" class="insp-task"></div>
+        <div id="insp-metrics" class="metrics"></div>
+        <!-- What this agent is told from earlier runs in this folder: its own lessons, then the project's. -->
+        <div id="insp-lessons" class="insp-lessons" hidden></div>
+        <div class="section-label"><span>What it is thinking</span><span class="spacer"></span><button id="insp-clear" class="btn sm">Clear</button></div>
+        <pre id="insp-thought" class="thought"></pre>
+        <div class="section-label"><span>Step in</span></div>
+        <textarea id="insp-note" rows="2" aria-label="Note for this agent" placeholder="Leave a note this agent must follow on its next step…"></textarea>
+        <div class="row">
+          <button id="insp-send" class="btn sm primary">Send note</button>
+          <button id="insp-pause" class="btn sm">Pause</button>
+          <span class="spacer"></span>
+          <button id="insp-swap" class="btn sm" title="Bench the provider in use for 60 seconds">Swap provider</button>
+          <button id="insp-stop" class="btn sm danger">Stop run</button>
+        </div>
+      </section>
+
+      <!-- The terminal: docked at the bottom of the stage, so the files and the chat stay in view. Every command run in the folder, and a prompt for your own. -->
+      <dialog id="terminal-dialog" class="dialog term-window">
+        <div class="panel-head">
+          <strong>terminal</strong>
+          <span class="spacer"></span>
+          <button id="term-size" class="icon-btn" title="Larger or smaller" aria-label="Make the terminal larger or smaller" type="button">[]</button>
+          <button id="term-close" class="icon-btn" title="Close" type="button">&times;</button>
+        </div>
+        <section id="terminal-view" class="terminal-view">
+          <div id="term-log" class="term-log" aria-live="polite"></div>
+          <form id="term-form" class="term-form">
+            <label id="term-prompt" class="term-prompt" for="term-input">~/ $</label>
+            <!-- The input draws no text of its own: the coloured copy under it shows what you type. -->
+            <div class="term-edit">
+              <div id="term-mirror" class="term-mirror" aria-hidden="true"></div>
+              <input id="term-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Command">
+            </div>
+          </form>
+        </section>
+      </dialog>
+    </main>
+
+    <!-- The usage bar: what the models have used today, live. -->
+    <footer id="usage-bar" class="usage-bar" aria-label="Model usage today"></footer>
+
+    <aside class="files-col" aria-label="Files">
+      <div class="panel-head">
+        <span>files.dir</span>
+        <span class="spacer"></span>
+        <button id="new-file" class="icon-btn wide" title="New file" aria-label="New file">+ file</button>
+        <button id="new-folder" class="icon-btn wide" title="New folder" aria-label="New folder">+ dir</button>
+        <button id="refresh-files" class="icon-btn wide" title="Refresh" aria-label="Refresh the file list">reload</button>
+        <button id="files-max" class="icon-btn win-max" data-win="files" type="button" hidden>[]</button>
+      </div>
+      <button id="folder-btn" class="folder-btn" title="Open a different folder">
+        <span class="folder-icon">~/</span>
+        <span id="folder-name" class="folder-name">workspace</span>
+        <span class="folder-change">[change]</span>
+      </button>
+      <div id="tree" class="tree"></div>
+      <!-- Source control: the folder's own git repository. -->
+      <section id="scm" class="scm">
+        <button id="scm-head" class="panel-head sub scm-head" title="Show or hide source control">
+          <span id="scm-toggle">[-]</span>
+          <span>Source control</span>
+          <span id="scm-count" class="badge" hidden></span>
+        </button>
+        <div id="scm-body" class="scm-body"></div>
+      </section>
+      <div id="locks-wrap" hidden>
+        <div class="panel-head sub"><span>Locked by the crew</span></div>
+        <ul id="locks" class="locks"></ul>
+      </div>
+    </aside>
+  </div>
+
+
+  <dialog id="folder-dialog" class="dialog">
+    <div class="panel-head">
+      <strong>Open a folder</strong>
+      <span class="spacer"></span>
+      <button id="folder-close" class="icon-btn" title="Close">&times;</button>
+    </div>
+    <div class="dialog-body folder-body">
+      <p class="muted">The crew works inside one folder. Pick any folder on this computer: Kadhai adds a <code>memory.md</code> file and a hidden <code>.kadhai</code> folder to it, and the crew can create and change files there.</p>
+      <div id="folder-places" class="places"></div>
+      <form id="folder-path-form" class="key-form">
+        <input id="folder-path" type="text" placeholder="Full path of a folder" aria-label="Full path of a folder" spellcheck="false">
+        <button class="btn sm">Go</button>
+      </form>
+      <div id="folder-list" class="folder-list"></div>
+    </div>
+    <div class="dialog-foot">
+      <button id="folder-new" class="btn sm" type="button">New folder here</button>
+      <span class="spacer"></span>
+      <button id="folder-cancel" class="btn sm" type="button">Cancel</button>
+      <button id="folder-room" class="btn sm" type="button" title="Keep this kitchen as it is, and open the folder in a second kitchen with its own crew and its own window">Open in a new kitchen</button>
+      <button id="folder-open" class="btn sm primary" type="button">Open this folder</button>
+    </div>
+  </dialog>
+
+  <dialog id="routes-dialog" class="dialog">
+    <div class="panel-head">
+      <strong>Providers</strong>
+      <span class="spacer"></span>
+      <button id="routes-close" class="icon-btn" title="Close">&times;</button>
+    </div>
+    <div id="routes-body" class="dialog-body"></div>
+    <div class="dialog-foot">
+      <button id="routes-skip" class="btn sm">Force hot-swap</button>
+      <button id="routes-reset" class="btn sm">Reset cooldowns</button>
+    </div>
+  </dialog>
+
+  <dialog id="agent-dialog" class="dialog narrow">
+    <div class="panel-head">
+      <strong id="agent-title">Hire a specialist</strong>
+      <span class="spacer"></span>
+      <button id="agent-close" class="icon-btn" title="Close" type="button">&times;</button>
+    </div>
+    <form id="agent-form" class="dialog-body agent-form">
+      <!-- Who the agent is: only a hired specialist's can be changed. -->
+      <div id="agent-identity" class="agent-identity">
+        <p class="muted">A specialist is an extra cook with your own instructions. The Chef gives it a sub-task only when the job matches what you say it is good at.</p>
+        <!-- Generate with AI: the Chef fills in the fields below from a few words; nothing is hired until Hire. -->
+        <div class="skill-import">
+          <label for="agent-gen-text">Generate with AI <span class="muted">(say what kind of agent you want - the Chef fills in the form, you check it)</span></label>
+          <div class="row">
+            <input id="agent-gen-text" type="text" maxlength="600" autocomplete="off" placeholder="someone who writes tests for my Node code">
+            <button id="agent-gen" class="btn sm" type="button">Generate</button>
+          </div>
+        </div>
+        <label>Name <span class="muted">(each hire gets an ASCII character of its own)</span>
+          <input id="agent-name" type="text" maxlength="30" placeholder="Pastry Chef" required>
+        </label>
+        <label>Good at <span class="muted">(one line — this decides when it gets work)</span>
+          <input id="agent-specialty" type="text" maxlength="160" placeholder="CSS, layout and visual polish" required>
+        </label>
+        <label>Instructions <span class="muted">(optional — how it should work)</span>
+          <textarea id="agent-instructions" rows="4" maxlength="1500" placeholder="Always use CSS variables for colours. Mobile first. No frameworks."></textarea>
+        </label>
+      </div>
+      <p id="agent-about" class="muted" hidden></p>
+      <label>Colour <span id="agent-hue-note" class="muted"></span>
+        <span id="agent-hue-row" class="hue-row">
+          <span id="agent-swatch" class="hue-swatch"></span>
+          <input id="agent-hue" type="range" min="0" max="359" step="1">
+          <button id="agent-hue-reset" class="btn sm" type="button" title="Go back to this agent's usual colour">Reset</button>
+        </span>
+      </label>
+      <label>Model <span class="muted">(if it is busy or out of quota, the next one takes over)</span>
+        <select id="agent-model" class="select"></select>
+      </label>
+      <div class="skill-field">
+        <div class="skill-head">Skills <span id="agent-skill-count" class="muted"></span><span class="spacer"></span><button id="skill-new" class="btn sm" type="button" title="Write a skill of your own">+ new skill</button></div>
+        <div id="agent-skills" class="skill-list"></div>
+      </div>
+      <!-- Only cooks use connections; the Chef and the Taster never call a tool. -->
+      <div id="agent-conn-field" class="skill-field">
+        <div class="skill-head">Connections <span class="muted">(the MCP servers and accounts this agent may use)</span></div>
+        <div id="agent-connections" class="skill-list"></div>
+      </div>
+      <div class="dialog-actions">
+        <button id="agent-dismiss" class="btn sm danger" type="button" hidden>Remove agent</button>
+        <span class="spacer"></span>
+        <button id="agent-cancel" class="btn sm" type="button">Cancel</button>
+        <button id="agent-save" class="btn sm primary">Hire</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="skill-dialog" class="dialog narrow">
+    <div class="panel-head">
+      <strong id="skill-title">New skill</strong>
+      <span class="spacer"></span>
+      <button id="skill-close" class="icon-btn" title="Close" type="button">&times;</button>
+    </div>
+    <form id="skill-form" class="dialog-body agent-form">
+      <p class="muted">A skill is a short piece of working advice you can load into any agent. It is added to every prompt that agent sends, so keep it brief and specific.</p>
+      <!-- A skill from a link (a SKILL.md on GitHub, say): fetched, condensed if long, then shown here to check before saving. -->
+      <div id="skill-import-row" class="skill-import">
+        <label for="skill-url">Start from a link <span class="muted">(a SKILL.md on GitHub or any Markdown file - long ones are condensed by the Chef)</span></label>
+        <div class="row">
+          <input id="skill-url" type="text" spellcheck="false" autocomplete="off" placeholder="https://github.com/.../SKILL.md">
+          <button id="skill-import" class="btn sm" type="button">Import</button>
+        </div>
+        <!-- Hand-picked ones (src/core/skillGallery.js): picking one imports it the same way. -->
+        <select id="skill-gallery" class="select" aria-label="Pick a skill from the gallery"></select>
+      </div>
+      <label>Name
+        <input id="skill-name" type="text" maxlength="40" placeholder="House style" required>
+      </label>
+      <label>What it is for <span class="muted">(one line - shown when choosing skills)</span>
+        <input id="skill-description" type="text" maxlength="200" placeholder="How code is laid out and named in this project" required>
+      </label>
+      <label>Advice <span id="skill-count" class="muted"></span>
+        <textarea id="skill-body" rows="9" maxlength="4000" placeholder="- Two-space indentation, single quotes.&#10;- One component per file, named like the file.&#10;- No new dependencies without asking." required></textarea>
+      </label>
+      <div class="dialog-actions">
+        <button id="skill-remove" class="btn sm danger" type="button" hidden>Delete skill</button>
+        <span class="spacer"></span>
+        <button id="skill-cancel" class="btn sm" type="button">Cancel</button>
+        <button id="skill-save" class="btn sm primary">Save skill</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="about-dialog" class="dialog narrow">
+    <div class="panel-head">
+      <strong>about.txt</strong>
+      <span class="spacer"></span>
+      <button id="about-close" class="icon-btn" title="Close" type="button">&times;</button>
+    </div>
+    <div id="about-body" class="dialog-body about-body"></div>
+  </dialog>
+
+  <dialog id="flows-dialog" class="dialog flows-window">
+    <div class="panel-head">
+      <strong>flows.cron</strong>
+      <span class="spacer"></span>
+      <button id="flows-max" class="icon-btn win-max" type="button" hidden>[]</button>
+      <button id="flows-close" class="icon-btn" title="Close" type="button">&times;</button>
+    </div>
+    <div id="flow-bar" class="flow-bar"></div>
+    <div class="flows-body">
+      <aside class="flow-side">
+        <div id="flow-side-tabs" class="flow-side-tabs" role="tablist" aria-label="Flows or runs"></div>
+        <nav id="flow-list" class="flow-list" aria-label="Your flows"></nav>
+        <div id="flow-palette" class="flow-palette" aria-label="Nodes you can add"></div>
+        <div id="flow-runs" class="flow-runs" aria-label="Runs of this flow" hidden></div>
+      </aside>
+      <div id="flow-stage" class="flow-stage">
+        <div id="flow-banner" class="flow-banner" hidden></div>
+        <div id="flow-canvas" class="flow-canvas" aria-label="The flow" tabindex="-1"></div>
+        <div id="flow-tools" class="flow-tools" aria-label="Canvas tools"></div>
+        <div id="flow-minimap" class="flow-minimap" aria-label="Overview of the flow; click to move there"></div>
+        <div id="flow-creator" class="flow-creator" role="dialog" aria-label="Add a node" hidden></div>
+      </div>
+      <aside id="flow-settings" class="flow-settings" aria-label="Settings of what is selected"></aside>
+      <div id="flow-ndv" class="flow-ndv" role="dialog" aria-label="Node, its input and its output" hidden></div>
+      <div id="flow-pop" class="flow-pop" role="dialog" aria-modal="true" hidden></div>
+    </div>
+  </dialog>
+
+  <dialog id="mcp-dialog" class="dialog wide">
+    <div class="panel-head">
+      <strong>Connections</strong>
+      <span class="spacer"></span>
+      <button id="mcp-close" class="icon-btn" title="Close">&times;</button>
+    </div>
+    <div class="conn-bar">
+      <input id="conn-search" type="search" aria-label="Search connections" placeholder="Search: GitHub, Notion, web search, database…" autocomplete="off" spellcheck="false">
+      <div id="conn-chips" class="places"></div>
+    </div>
+    <div id="mcp-body" class="dialog-body"></div>
+  </dialog>
+
+  <dialog id="keys-dialog" class="dialog">
+    <div class="panel-head">
+      <strong>Models: subscriptions and keys</strong>
+      <span class="spacer"></span>
+      <button id="keys-close" class="icon-btn" title="Close">&times;</button>
+    </div>
+    <div id="keys-body" class="dialog-body"></div>
+  </dialog>
+
+  <div id="toasts" class="toasts"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

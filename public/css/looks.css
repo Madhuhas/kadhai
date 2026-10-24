@@ -1,0 +1,151 @@
+/*
+ * What makes a theme more than its colours: its typefaces, its corners, how its
+ * windows are framed, what is behind them, and a little motion. themes.css holds
+ * each theme's variables (--font-ui, --font-head, --font-prose, --r-*, --ascii-ramp);
+ * this file holds the rules that are not variables. Light and Dark set none of
+ * them: they are the plain retro desktop.
+ *
+ * Code, commands, files and the ASCII art stay in --font-mono in every theme:
+ * the kitchen's figures only line up in a monospaced face.
+ */
+
+/* ------------------------------------------------------- shared: faces */
+.panel-head, .btn, .pill, .select, .tab, .menu-item, .section-label, .dialog-body h4, .msg .who, .station-name, .floor-sub { font-family: var(--font-ui); }
+.panel-head, .floor-title, .dialog .panel-head strong { font-family: var(--font-head); }
+.msg.manager, .msg.user, .bubble-text, .flow-explain { font-family: var(--font-prose); }
+.msg.manager code, .msg.manager pre { font-family: var(--font-mono); }
+
+/* --------------------------------------- normal light, dracula, nord: an app */
+/* A normal app: headings in words, not code comments; windows that sit apart as cards. */
+:is([data-theme='modern'], [data-theme='dracula'], [data-theme='nord'], [data-theme='solarized'], [data-theme='contrast']) :is(.section-label, .dialog-body h4) { text-transform: none; letter-spacing: 0.01em; font-weight: 600; font-size: var(--t-small); }
+:is([data-theme='modern'], [data-theme='dracula'], [data-theme='nord'], [data-theme='solarized'], [data-theme='contrast']) :is(.section-label, .dialog-body h4)::before { content: none; }
+:is([data-theme='modern'], [data-theme='dracula'], [data-theme='nord'], [data-theme='solarized']) .msg .who { text-transform: none; letter-spacing: 0.02em; font-weight: 600; }
+:is([data-theme='modern'], [data-theme='nord'], [data-theme='solarized']) :is(.chat-col, .stage, .files-col) { border-width: 1px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 14px rgba(0, 0, 0, 0.06); }
+:is([data-theme='modern'], [data-theme='dracula'], [data-theme='nord'], [data-theme='solarized']) .panel-head { height: 34px; padding: 0 var(--s3); font-weight: 600; }
+:is([data-theme='modern'], [data-theme='dracula'], [data-theme='nord'], [data-theme='solarized']) .btn.primary { font-weight: 600; }
+[data-theme='modern'] body, [data-theme='solarized'] body { background-image: none; }
+
+/* Dracula: tabs as pills, a purple line under every window title. */
+[data-theme='dracula'] .tab { border-radius: 999px; padding: 0 var(--s3); }
+[data-theme='dracula'] .tab.active { box-shadow: none; background: var(--accent); color: var(--accent-ink); }
+[data-theme='dracula'] .panel-head { box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+[data-theme='dracula'] body { background-image: none; }
+
+/* Nord: round and soft - frosted taskbar, pill buttons, a faint aurora behind the windows. */
+[data-theme='nord'] body {
+  background-image:
+    radial-gradient(60% 50% at 15% 0%, rgba(163, 190, 140, 0.12), transparent 70%),
+    radial-gradient(50% 45% at 85% 5%, rgba(180, 142, 173, 0.14), transparent 70%),
+    radial-gradient(70% 60% at 50% 110%, rgba(136, 192, 208, 0.1), transparent 70%);
+  background-size: auto;
+}
+[data-theme='nord'] .topbar { background: rgba(36, 41, 51, 0.72); backdrop-filter: blur(12px) saturate(1.2); }
+[data-theme='nord'] :is(.pill, .btn, .tab, .select) { border-radius: 999px; }
+[data-theme='nord'] .station-card { border-radius: 14px; }
+
+/* Solarized: paper - serif titles and chat, a warm hairline under titles, italic notes. */
+[data-theme='solarized'] .panel-head { font-weight: 700; letter-spacing: 0.01em; }
+[data-theme='solarized'] .floor-title { font-weight: 700; font-style: italic; }
+[data-theme='solarized'] .floor-title::before { content: ''; }
+[data-theme='solarized'] .muted { font-style: italic; }
+[data-theme='solarized'] .msg.manager { line-height: 1.7; }
+
+/* ------------------------------------------------------- high contrast */
+[data-theme='contrast'] :is(.chat-col, .stage, .files-col, .dialog) { border-width: 2px; }
+[data-theme='contrast'] :is(.btn, .pill, .select, .tab) { border-width: 2px; font-weight: 600; }
+[data-theme='contrast'] :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+[data-theme='contrast'] a { text-decoration: underline; }
+[data-theme='contrast'] .muted { color: var(--muted); }
+
+/* ------------------------------------------------------------ cyberpunk */
+/* A HUD: a neon grid behind, corner brackets on every window, cut corners on controls, OCR titles in capitals. */
+[data-theme='cyberpunk'] body {
+  background-image:
+    linear-gradient(rgba(5, 217, 232, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 42, 109, 0.06) 1px, transparent 1px),
+    radial-gradient(80% 60% at 50% 120%, rgba(255, 42, 109, 0.18), transparent 70%);
+  background-size: 32px 32px, 32px 32px, auto;
+}
+[data-theme='cyberpunk'] :is(.chat-col, .stage, .files-col) {
+  background:
+    linear-gradient(var(--accent), var(--accent)) top left / 16px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) top left / 2px 16px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom right / 16px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom right / 2px 16px no-repeat,
+    var(--panel);
+  border-width: 1px;
+}
+[data-theme='cyberpunk'] .panel-head { text-transform: uppercase; letter-spacing: 0.14em; font-size: var(--t-small); text-shadow: 1px 0 rgba(255, 42, 109, 0.8), -1px 0 rgba(5, 217, 232, 0.8); }
+[data-theme='cyberpunk'] .panel-head:not(.sub) > :is(span, strong):first-child::before { content: '// '; color: var(--accent); text-shadow: none; }
+[data-theme='cyberpunk'] .floor-title { text-transform: uppercase; letter-spacing: 0.12em; text-shadow: 2px 0 rgba(255, 42, 109, 0.75), -2px 0 rgba(5, 217, 232, 0.75), 0 0 14px rgba(255, 42, 109, 0.6); }
+[data-theme='cyberpunk'] :is(.btn, .pill, .tab, .station-card, .menu-item) { clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px)); }
+[data-theme='cyberpunk'] :is(.btn, .pill) { text-transform: uppercase; letter-spacing: 0.08em; font-size: var(--t-small); }
+[data-theme='cyberpunk'] .btn.primary { color: #0a0612; text-shadow: none; }
+[data-theme='cyberpunk'] .station-card { border-color: color-mix(in srgb, var(--agent, var(--accent)) 60%, transparent); }
+[data-theme='cyberpunk'] .msg.user { border-color: #3a1f63; border-left: 2px solid #05d9e8; }
+[data-theme='cyberpunk'] textarea, [data-theme='cyberpunk'] input { caret-color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  /* A glitch: the title tears for a moment now and then; a button jitters when pointed at. */
+  [data-theme='cyberpunk'] .floor-title { animation: glitch 6s steps(1) infinite; }
+  [data-theme='cyberpunk'] :is(.btn, .pill):hover { animation: jitter 0.25s steps(2) 2; }
+}
+@keyframes glitch {
+  0%, 92%, 100% { transform: none; clip-path: none; }
+  93% { transform: translateX(-3px); clip-path: inset(10% 0 55% 0); }
+  94% { transform: translateX(3px); clip-path: inset(55% 0 12% 0); }
+  95% { transform: translateX(-1px); clip-path: none; }
+}
+@keyframes jitter {
+  0% { transform: translate(1px, 0); }
+  50% { transform: translate(-1px, 1px); }
+  100% { transform: none; }
+}
+
+/* Cyberpunk kitchen: neon metal, hot oil, a magenta fire. */
+[data-theme='cyberpunk'] {
+  --m-iron: #8c80c4; --m-inside: #5f5390; --m-rim: #05d9e8; --m-oil: #f9f002; --m-bubble: #fffb96;
+  --m-fire: #ff2a6d; --m-flame: #ff7eb6; --m-steam: #3b2f63; --m-stove: #05d9e8;
+  --m-hat: #ece6ff; --m-blade: #05d9e8; --m-board: #c792ff; --m-veg: #05ffa1; --m-bowl: #8c80c4;
+  --m-tile: #1d1233; --m-trim: #ff2a6d; --m-sky: #1a0b2e; --m-sun: #ff2a6d; --m-cloud: #05d9e8; --m-moon: #f9f002; --m-star: #05d9e8;
+  --m-frame: #05d9e8; --m-ticket: #ece6ff; --m-chalk: #05ffa1; --m-counter: #05d9e8; --m-cabinet: #3a1f63; --m-floor: #2c1a4a;
+}
+
+/* ------------------------------------------------------------ amber CRT */
+/* One colour on an amber monitor: the kitchen is only lighter and darker amber. */
+[data-theme='amber'] {
+  --m-iron: #c98a00; --m-inside: #8a5f00; --m-rim: #ffd166; --m-oil: #ffb000; --m-bubble: #ffe0a3;
+  --m-fire: #ffcc4d; --m-flame: #ffb000; --m-steam: #6e4c00; --m-stove: #a06e00;
+  --m-hat: #ffe0a3; --m-skin: #ffb000; --m-legs: #8a5f00; --m-shoes: #6e4c00; --m-tool: #c98a00;
+  --m-blade: #ffe0a3; --m-board: #a06e00; --m-veg: #ffd166; --m-bowl: #c98a00; --m-eye: #ffe0a3;
+  --m-tile: #2a1c00; --m-trim: #6e4c00; --m-sky: #1a1100; --m-sun: #ffd166; --m-cloud: #a06e00; --m-moon: #ffe0a3; --m-star: #ffb000;
+  --m-frame: #a06e00; --m-ticket: #ffb000; --m-chalk: #ffd166; --m-counter: #ffb000; --m-cabinet: #6e4c00; --m-floor: #3a2700;
+}
+[data-theme='amber'] .m-coat { color: var(--text); }
+/* A terminal: one face, titles in reverse video, buttons in brackets, double frames, a vignette, and a power-on. */
+[data-theme='amber'] :is(.chat-col, .stage, .files-col, .dialog) { border-style: double; border-width: 3px; }
+[data-theme='amber'] .panel-head { justify-content: flex-start; text-transform: uppercase; letter-spacing: 0.1em; font-size: var(--t-small); }
+[data-theme='amber'] .panel-head:not(.sub) > :is(span, strong):first-child { padding: 0 6px; background: var(--text); color: var(--panel); text-shadow: none; }
+[data-theme='amber'] .panel-head:not(.sub) > :is(span, strong):first-child::before { content: '[ '; }
+[data-theme='amber'] .panel-head:not(.sub) > :is(span, strong):first-child::after { content: ' ]'; }
+[data-theme='amber'] .btn::before { content: '['; opacity: 0.7; }
+[data-theme='amber'] .btn::after { content: ']'; opacity: 0.7; }
+[data-theme='amber'] :is(.btn, .pill) { text-transform: uppercase; letter-spacing: 0.06em; }
+[data-theme='amber'] .floor-title { text-transform: uppercase; letter-spacing: 0.1em; }
+[data-theme='amber'] .floor-title::after { content: '_'; margin-left: 2px; }
+[data-theme='amber'] body { background-image: none; }
+[data-theme='amber'] body::before { content: ''; position: fixed; inset: 0; z-index: 199; pointer-events: none; background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.55) 100%); }
+[data-theme='amber'] textarea, [data-theme='amber'] input { caret-color: var(--text); }
+@media (prefers-reduced-motion: no-preference) {
+  /* Switching to it powers the monitor on: a bright line that opens into the picture. */
+  [data-theme='amber'] #app { animation: crt-on 0.55s ease-out; }
+  [data-theme='amber'] .floor-title::after { animation: blink 1s steps(1) infinite; }
+}
+@keyframes crt-on {
+  0% { transform: scale(1, 0.004); filter: brightness(4); }
+  45% { transform: scale(1, 0.004); filter: brightness(4); }
+  70% { transform: scale(1, 1.02); filter: brightness(1.6); }
+  100% { transform: none; filter: none; }
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}

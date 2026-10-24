@@ -1,0 +1,26 @@
+name: Suggestion
+description: An idea, a feature or an improvement
+labels: ["suggestion"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: The job you are trying to get done, or what bothers you today.
+      placeholder: When I ..., I would like the crew to ...
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How you picture it working. A rough sketch in words is fine.
+  - type: textarea
+    id: else
+    attributes:
+      label: Anything else
+      description: Other tools that do this well, or ways around it you use now.
+  - type: markdown
+    attributes:
+      value: |
+        Kadhai stays free to run on an ordinary laptop, local only, with no account. Ideas that keep it that way are the easiest to take in.
