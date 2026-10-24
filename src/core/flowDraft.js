@@ -40,7 +40,7 @@ export const GIVES = {
   'github/create_issue': ISSUE,
   'github/comment': '{id, url}',
   'github/list_issues': `a list of ${ISSUE}`,
-  'github/list_pulls': `a list of ${ISSUE.replace('}', ', branch, draft}')}`,
+  'github/list_pulls': `a list of ${ISSUE.slice(0, -1)}, branch, draft}`,
   'github/latest_release': '{tag, name, url, published, notes}',
   'github/get_file': '{path, size, url, content}',
   'notion/create_page': '{id, url}',

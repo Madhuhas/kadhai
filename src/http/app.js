@@ -219,7 +219,7 @@ export function apiRouter(engine) {
   api.post('/triggers/:id/enabled', wrap(async (req, res) => res.json(await triggers.setEnabled(req.params.id, req.body?.enabled === true))));
   // A webhook from a program on this computer (localOnly still applies). The token goes in a header, never the address.
   api.post('/hooks/:id', wrap(async (req, res) => {
-    const token = /^Bearer\s+(.+)$/i.exec(req.headers.authorization ?? '')?.[1] ?? req.headers['x-kadhai-token'];
+    const token = /^Bearer\s+(\S+)$/i.exec(req.headers.authorization ?? '')?.[1] ?? req.headers['x-kadhai-token'];
     res.status(202).json(await triggers.fire(req.params.id, token, req.body));
   }));
 

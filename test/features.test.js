@@ -1213,7 +1213,7 @@ test('triggers: a webhook, a labelled GitHub issue and a Telegram message each s
   await triggers.poll();
   await settle();
   assert.equal(tasks.length, 2, 'the same issue is not a new task the next minute');
-  assert.equal(world.calls.find((c) => c.url.includes('api.github.com')).auth, 'Bearer ghp_SECRET_TOKEN');
+  assert.equal(world.calls.find((c) => new URL(c.url).hostname === 'api.github.com').auth, 'Bearer ghp_SECRET_TOKEN');
 
   // ---- Telegram: the backlog is skipped, strangers are ignored (but noted), the report is sent back
   world.updates = [{ update_id: 100, message: { chat: { id: 42 }, text: 'sent before the trigger existed' } }];

@@ -60,10 +60,10 @@ test('flows: data, new nodes, credentials, sub-flows, pins, history, polled star
     const u = String(url);
     calls.push({ url: u, method: options.method ?? 'GET', headers: options.headers ?? {}, body: options.body ?? null });
     if (u.startsWith('https://api.telegram.org/bot')) return u.includes('123:good') ? json({ ok: true, result: { message_id: 7, chat: { id: 42 }, username: 'kbot' } }) : json({ ok: false, description: 'Unauthorized' }, 401);
-    if (u.startsWith('https://feed.example')) return new Response(feed, { headers: { 'content-type': 'application/rss+xml' } });
+    if (new URL(u).host === 'feed.example') return new Response(feed, { headers: { 'content-type': 'application/rss+xml' } });
     if (u.startsWith('https://api.example.com/items')) return json({ items: [{ id: 1, name: 'pen', price: 3 }, { id: 2, name: 'ink', price: 12 }] });
     if (u.startsWith('https://api.example.com/fail')) return json({ message: 'nope' }, 503);
-    if (u.startsWith('https://spec.example')) return json({ openapi: '3.0.0', info: { title: 'Pets' }, servers: [{ url: 'https://pets.example/v1' }], paths: { '/pets/{id}': { get: { summary: 'One pet', parameters: [{ name: 'id', in: 'path', required: true }, { name: 'fields', in: 'query' }] } }, '/pets': { post: { operationId: 'addPet', requestBody: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Pet' } } } } } } }, components: { schemas: { Pet: { type: 'object', properties: { name: { type: 'string', example: 'Rex' }, age: { type: 'integer' } } } } } });
+    if (new URL(u).host === 'spec.example') return json({ openapi: '3.0.0', info: { title: 'Pets' }, servers: [{ url: 'https://pets.example/v1' }], paths: { '/pets/{id}': { get: { summary: 'One pet', parameters: [{ name: 'id', in: 'path', required: true }, { name: 'fields', in: 'query' }] } }, '/pets': { post: { operationId: 'addPet', requestBody: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Pet' } } } } } } }, components: { schemas: { Pet: { type: 'object', properties: { name: { type: 'string', example: 'Rex' }, age: { type: 'integer' } } } } } });
     return new Response('ok');
   };
   const completion = async (_route, req) => {

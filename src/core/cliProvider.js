@@ -131,7 +131,9 @@ export function classifyCli(output, spawnError = null) {
   return 'server';
 }
 
-const quoteWin = (arg) => (arg === '' || /[\s"&|<>^()]/.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg);
+// Quote one word for cmd.exe the way programs read it back (the C runtime's rules): a quote is escaped,
+// and the backslashes in front of it or at the very end are doubled - C:\dir\ would otherwise eat the closing quote.
+const quoteWin = (arg) => (arg === '' || /[\s"&|<>^()]/.test(arg) ? `"${arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, '$1$1')}"` : arg);
 
 export function launch(command, args, options) {
   // On Windows these CLIs are usually .cmd shims, which need a shell (as MCP servers do).

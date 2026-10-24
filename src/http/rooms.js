@@ -105,6 +105,7 @@ export class Rooms {
   }
 
   #file(id, suffix = '') {
+    if (!/^[0-9a-f]{6}$/.test(String(id))) throw fail('No such kitchen', 404);
     return path.join(this.dir, `${id}${suffix}.json`);
   }
 

@@ -10,7 +10,9 @@ const STARTUP_TIMEOUT_MS = 90000; // "npx -y ..." may have to download the serve
 const NAME = /^[\w.-]{1,40}$/;
 
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
-const quoteWin = (arg) => (/[\s"&|<>^()]/.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg);
+// Quote one word for cmd.exe the way programs read it back (the C runtime's rules): a quote is escaped,
+// and the backslashes in front of it or at the very end are doubled - C:\dir\ would otherwise eat the closing quote.
+const quoteWin = (arg) => (/[\s"&|<>^()]/.test(arg) ? `"${arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, '$1$1')}"` : arg);
 
 /**
  * Split a typed command line into words. Quotes (single or double) group
