@@ -37,7 +37,9 @@ export class Workspace {
 
   async init() {
     await fs.mkdir(this.tmpDir, { recursive: true });
-    this.realRoot = realpathSync(this.root);
+    // .native, like fs.promises.realpath in the checks below: the JavaScript realpathSync keeps a Windows
+    // short name (C:\Users\RUNNER~1) that the native one expands, and then no path ever looked inside.
+    this.realRoot = realpathSync.native(this.root);
     for (const name of await fs.readdir(this.tmpDir)) {
       await fs.rm(path.join(this.tmpDir, name), { force: true });
     }

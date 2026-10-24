@@ -186,6 +186,26 @@ setInterval(() => {}, 1000);
   assert.equal(alive(), false, 'the server process was left running');
 });
 
+test('a workspace opened by its Windows short name (C:\\Users\\RUNNER~1) still works', async (t) => {
+  // Seen on GitHub's Windows runners: os.tmpdir() is a short name, and every write was refused as
+  // "leaves the workspace through a link" because the root was resolved one way and paths the other.
+  if (process.platform !== 'win32') return t.skip('Windows only');
+  const { execFileSync } = await import('node:child_process');
+  const long = path.join(await tmpDir('short'), 'a folder with a long name');
+  await fs.mkdir(long);
+  let short = execFileSync('cmd', ['/d', '/c', `for %I in ("${long}") do @echo %~sI`], { windowsVerbatimArguments: true }).toString().trim();
+  // A disk may make no short names for new folders; the temp folder itself may still be one (GitHub's runners).
+  const { realpathSync } = await import('node:fs');
+  const named = (p) => Boolean(p) && p.toLowerCase() !== realpathSync.native(p).toLowerCase();
+  if (!named(short)) short = named(long) ? long : null;
+  if (!short) return t.skip('no Windows short name to try on this computer');
+  const engine = await createEngine({ workspaceDir: short, mock: true, mcp: false, agentsFile: path.join(long, '..', 'agents.json') });
+  t.after(() => engine.close());
+  await engine.workspace.writeFile('hello.txt', 'hi', { owner: 'test' });
+  assert.equal((await engine.workspace.readFile('hello.txt')).content, 'hi');
+  assert.equal(await fs.readFile(path.join(long, 'hello.txt'), 'utf8'), 'hi');
+});
+
 test('KADHAI_DATA moves every file of the user out of the code folder (the desktop app\'s data folder)', async () => {
   const { execFileSync } = await import('node:child_process');
   const data = await tmpDir('data');
