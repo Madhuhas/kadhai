@@ -3,6 +3,7 @@
 [![Tests](https://github.com/Madhuhas/kadhai/actions/workflows/test.yml/badge.svg)](https://github.com/Madhuhas/kadhai/actions/workflows/test.yml)
 [![Release](https://img.shields.io/github/v/release/Madhuhas/kadhai?include_prereleases&label=release)](https://github.com/Madhuhas/kadhai/releases)
 [![License](https://img.shields.io/github/license/Madhuhas/kadhai)](LICENSE)
+<a href="https://kadhai.pages.dev/badge/"><picture><source media="(prefers-color-scheme: dark)" srcset="https://kadhai.pages.dev/badges/built-with-kadhai-light.svg"><img src="https://kadhai.pages.dev/badges/built-with-kadhai-dark.svg" alt="Built with Kadhai" width="119" height="20"></picture></a>
 
 **Website:** [kadhai.pages.dev](https://kadhai.pages.dev) · **Download:** [releases](https://github.com/Madhuhas/kadhai/releases) · **Community:** [discussions](https://github.com/Madhuhas/kadhai/discussions)
 
