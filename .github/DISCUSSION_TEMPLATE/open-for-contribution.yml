@@ -1,0 +1,33 @@
+title: "[Open] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A piece of work that anyone may pick up. Before you start coding, reply here to say you are taking it, so two people do not build the same thing. Read [CONTRIBUTING.md](https://github.com/Madhuhas/kadhai/blob/main/CONTRIBUTING.md) first: every contributor signs the short agreement once.
+  - type: textarea
+    id: what
+    attributes:
+      label: What needs doing
+      description: The change, and why it matters to people using Kadhai.
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where to start
+      description: The files or parts of the code involved, and any rule from docs/DEVELOPERS.md that applies.
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size
+      options:
+        - Small - a good first contribution
+        - Medium - a day or two
+        - Large - talk it through first
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: How to tell the work is finished (a test passes, a screen shows ..., docs updated).

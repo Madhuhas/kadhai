@@ -1,7 +1,10 @@
-name: Suggestion
-description: An idea, a feature or an improvement
+title: "[Feature] "
 labels: ["suggestion"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Others can vote for it with an upvote, so the most wanted ones rise to the top.
   - type: textarea
     id: problem
     attributes:

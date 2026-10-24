@@ -92,7 +92,8 @@ The details are in [Safety and privacy](docs/USER-GUIDE.md#15-safety-and-privacy
 ## Feedback
 
 - **Found a bug?** [Open a bug report](https://github.com/Madhuhas/kadhai/issues/new?template=bug_report.yml). Paste the details from **more > about** in Kadhai; they hold no keys.
-- **Have an idea?** [Make a suggestion](https://github.com/Madhuhas/kadhai/issues/new?template=feature_request.yml).
+- **Have an idea?** [Post it in Feature Requests](https://github.com/Madhuhas/kadhai/discussions/new?category=feature-requests), where others can upvote it.
+- **Want to help?** [Open for Contribution](https://github.com/Madhuhas/kadhai/discussions/categories/open-for-contribution) lists work anyone may pick up. News goes to [Announcements](https://github.com/Madhuhas/kadhai/discussions/categories/announcements).
 - **Found a security problem?** Please do not open an issue: [report it privately](https://github.com/Madhuhas/kadhai/security/advisories/new). See [SECURITY.md](SECURITY.md).
 
 ## License

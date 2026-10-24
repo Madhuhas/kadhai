@@ -1,5 +1,11 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Suggest a feature
+    url: https://github.com/Madhuhas/kadhai/discussions/new?category=feature-requests
+    about: Ideas live in Discussions, where others can upvote them.
+  - name: Pick up some work
+    url: https://github.com/Madhuhas/kadhai/discussions/categories/open-for-contribution
+    about: Tasks anyone may take on, and how to start.
   - name: Report a security problem (privately)
     url: https://github.com/Madhuhas/kadhai/security/advisories/new
     about: Please do not post security problems as issues. Report them privately here.
