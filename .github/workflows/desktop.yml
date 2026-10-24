@@ -1,0 +1,41 @@
+# Builds the Windows installer on GitHub from the code in the repository, so a release can be traced
+# back to its source (and, later, signed: SignPath asks for exactly this). Run it by hand from the
+# Actions tab to get the installer as an artifact; publishing a release builds it and attaches it.
+name: Desktop build
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      # The app's own dependency (express) is packed into the installer from node_modules.
+      - run: npm ci --omit=dev
+      - run: npm ci
+        working-directory: desktop
+      - run: npx electron-builder --win --publish never
+        working-directory: desktop
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kadhai-windows-installer
+          path: desktop/dist/*.exe
+          if-no-files-found: error
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" desktop/dist/*.exe --clobber
