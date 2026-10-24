@@ -9,7 +9,15 @@ export const MAX_ROOMS = 4; // extra rooms beside the first: each is a whole pro
 const PORT_STEP = 10; // a room takes two ports (dashboard and preview), and there is space between rooms
 const READY_TIMEOUT_MS = 30000;
 const fail = (message, status = 400, extra = {}) => Object.assign(new Error(message), { status, ...extra });
-const same = (a, b) => path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
+// Where a folder really is, so a Windows short name (PROGRA~1) or a link cannot open one folder in two rooms.
+const real = (p) => {
+  try {
+    return fs.realpathSync.native(path.resolve(p));
+  } catch {
+    return path.resolve(p);
+  }
+};
+const same = (a, b) => real(a).toLowerCase() === real(b).toLowerCase();
 
 const readJson = (file) => {
   try {

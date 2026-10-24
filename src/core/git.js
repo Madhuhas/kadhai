@@ -70,7 +70,10 @@ export class Repo {
     const top = await this.#git(['rev-parse', '--show-toplevel'], { allowFail: true }).catch(() => undefined);
     if (top === undefined) return { available: false };
     if (top === null) return { available: true, repo: false };
-    const same = path.resolve(top.trim()).toLowerCase() === path.resolve(this.root).toLowerCase();
+    // Compared where each really is: git names the long path (C:\Users\runneradmin), the folder may have
+    // been opened by its Windows short name (C:\Users\RUNNER~1) or through a link.
+    const real = (p) => fs.realpath(path.resolve(p)).catch(() => path.resolve(p));
+    const same = (await real(top.trim())).toLowerCase() === (await real(this.root)).toLowerCase();
     return same ? { available: true, repo: true } : { available: true, repo: false, parent: path.resolve(top.trim()) };
   }
 
