@@ -45,7 +45,7 @@ The **keys** dialog opens by itself. Paste a free key from [Google AI Studio](ht
 | [Privacy](docs/PRIVACY.md) | Everyone: what leaves your computer, when, and to whom (no telemetry) |
 | [Developer guide](docs/DEVELOPERS.md) | Contributors: architecture, the life of a run, where data lives, the rules, recipes, testing |
 | [Security](SECURITY.md) | Everyone: how to report a security problem privately, and what counts as one |
-| [Contributing](CONTRIBUTING.md) | Contributors: the contributor agreement, what not to copy, checks before a pull request |
+| [Contributing](CONTRIBUTING.md) | Contributors: ways to help, talking first, what a change must keep, setup, testing, pull requests, the contributor agreement |
 | [desktop/](desktop/README.md) | The desktop app (beta): Kadhai in its own window, and how to build the installer |
 
 ## How it works, in one picture
