@@ -130,6 +130,7 @@
 [data-theme='amber'] .btn::before { content: '['; opacity: 0.7; }
 [data-theme='amber'] .btn::after { content: ']'; opacity: 0.7; }
 [data-theme='amber'] :is(.btn, .pill) { text-transform: uppercase; letter-spacing: 0.06em; }
+@media (max-width: 620px) { [data-theme='amber'] .topbar .pill { letter-spacing: 0; } }
 [data-theme='amber'] .floor-title { text-transform: uppercase; letter-spacing: 0.1em; }
 [data-theme='amber'] .floor-title::after { content: '_'; margin-left: 2px; }
 [data-theme='amber'] body { background-image: none; }

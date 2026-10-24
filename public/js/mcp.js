@@ -51,7 +51,7 @@ function copyButton(text, label = 'Copy') {
       button.textContent = 'Copied';
       setTimeout(() => (button.textContent = label), 1500);
     } catch {
-      toast('Could not copy — select the text and copy it by hand', 'err');
+      toast('Could not copy. Select the text and copy it by hand', 'err');
     }
   };
   return button;
@@ -78,7 +78,7 @@ async function connect(entry, values) {
   try {
     await api.connect(entry.id, values);
     openId = null;
-    if (entry.type === 'signin') toast(`A browser tab is opening — sign in to ${entry.name} there`);
+    if (entry.type === 'signin') toast(`A browser tab is opening: sign in to ${entry.name} there`);
   } catch (err) {
     watching.delete(entry.id);
     fail(err);
@@ -118,7 +118,7 @@ function googlePanel(status) {
   if (status.connected) {
     const names = status.available.filter((s) => status.services.includes(s.id)).map((s) => s.label);
     return [
-      h('p', { class: 'connector-note' }, `Connected${status.email ? ` as ${status.email}` : ''}. The cooks can look things up in: ${names.join(', ')}. Read-only — they cannot send mail, edit documents or change your calendar.`),
+      h('p', { class: 'connector-note' }, `Connected${status.email ? ` as ${status.email}` : ''}. The cooks can look things up in: ${names.join(', ')}. Read-only: they cannot send mail, edit documents or change your calendar.`),
       h('p', { class: 'muted connector-note' }, 'Anything a cook reads is sent to the AI provider in use, like any other text in a task.'),
       accessPanel('google'),
       h(
@@ -131,8 +131,8 @@ function googlePanel(status) {
     ];
   }
 
-  const clientId = h('input', { type: 'text', ariaLabel: 'Google client ID', placeholder: status.configured ? `Client ID saved (${status.clientId}) — leave blank to keep it` : 'Client ID (ends in .apps.googleusercontent.com)' });
-  const secret = h('input', { type: 'password', ariaLabel: 'Google client secret', placeholder: status.configured ? 'Client secret saved — leave blank to keep it' : 'Client secret', autocomplete: 'off' });
+  const clientId = h('input', { type: 'text', ariaLabel: 'Google client ID', placeholder: status.configured ? `Client ID saved (${status.clientId}). Leave blank to keep it` : 'Client ID (ends in .apps.googleusercontent.com)' });
+  const secret = h('input', { type: 'password', ariaLabel: 'Google client secret', placeholder: status.configured ? 'Client secret saved. Leave blank to keep it' : 'Client secret', autocomplete: 'off' });
   clientId.spellcheck = false;
   const picked = new Set(status.services.length ? status.services : ['drive']);
   const boxes = status.available.map((s) => {
@@ -142,7 +142,7 @@ function googlePanel(status) {
   });
 
   return [
-    status.needsReconnect ? h('p', { class: 'mcp-error' }, 'The sign-in expired — connect again.') : null,
+    status.needsReconnect ? h('p', { class: 'mcp-error' }, 'The sign-in expired. Connect again.') : null,
     googleSteps(status),
     h(
       'form',
@@ -383,7 +383,7 @@ function outward() {
   return [
     h('p', { class: 'muted' }, 'Kadhai is an MCP server too: Claude Desktop, Claude Code, Cursor and other MCP apps can hand tasks to this crew and read or write files in the folder that is open.'),
     h('div', { class: 'mcp-out' }, h('span', { class: 'muted' }, 'While Kadhai is running (tasks show up live here):'), h('div', { class: 'mcp-copy' }, h('code', null, url), copyButton(url))),
-    h('div', { class: 'mcp-out' }, h('span', { class: 'muted' }, 'Or let the app start its own copy — add this to its MCP settings:'), h('div', { class: 'mcp-copy' }, h('pre', null, snippet), copyButton(snippet))),
+    h('div', { class: 'mcp-out' }, h('span', { class: 'muted' }, 'Or let the app start its own copy by adding this to its MCP settings:'), h('div', { class: 'mcp-copy' }, h('pre', null, snippet), copyButton(snippet))),
   ];
 }
 

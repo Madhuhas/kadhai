@@ -74,10 +74,10 @@ const server = app.listen(config.port, config.host, () => {
       Workspace   ${engine.config.workspaceDir}
       Providers   ${
         config.mock
-          ? 'MOCK MODE — simulated providers, no API calls'
+          ? 'MOCK MODE: simulated providers, no API calls'
           : routes.length
             ? `${routes.length} route(s): ${[...new Set(routes.map((r) => r.provider))].join(', ')}`
-            : 'none yet — add a free API key in the dashboard (the keys button)'
+            : 'none yet. Add a free API key in the dashboard (the keys button)'
       }
 `);
 });

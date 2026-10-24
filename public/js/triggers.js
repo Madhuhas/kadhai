@@ -31,7 +31,7 @@ function copyButton(text) {
       button.textContent = 'Copied';
       setTimeout(() => (button.textContent = 'Copy'), 1500);
     } catch {
-      toast('Could not copy — select the text and copy it by hand', 'err');
+      toast('Could not copy. Select the text and copy it by hand', 'err');
     }
   };
   return button;
@@ -53,7 +53,7 @@ function webhookHelp(t) {
   const example = `curl -X POST ${url} -H "Authorization: Bearer ${token ?? '<token>'}" -H "Content-Type: application/json" -d "{\\"text\\": \\"what to do\\"}"`;
   return [
     token
-      ? h('div', { class: 'mcp-out' }, h('span', { class: 'muted' }, 'Its token — shown this once, so copy it now:'), h('div', { class: 'mcp-copy' }, h('code', null, token), copyButton(token)))
+      ? h('div', { class: 'mcp-out' }, h('span', { class: 'muted' }, 'Its token, shown only this once, so copy it now:'), h('div', { class: 'mcp-copy' }, h('code', null, token), copyButton(token)))
       : null,
     h('div', { class: 'mcp-out' }, h('span', { class: 'muted' }, 'Send a task from this computer like this:'), h('div', { class: 'mcp-copy' }, h('pre', null, example), copyButton(example))),
   ];
@@ -105,7 +105,7 @@ function addForm() {
 
   const showFields = () => {
     const type = types.find((t) => t.id === kind.value);
-    about.textContent = type ? `${type.about}${type.checked === 'live' ? ' Not yet tried from Kadhai with a real account — if it reports a problem, the message will say why.' : ''}` : '';
+    about.textContent = type ? `${type.about}${type.checked === 'live' ? ' Not yet tried from Kadhai with a real account. If it reports a problem, the message will say why.' : ''}` : '';
     fields.replaceChildren(
       ...(type?.fields ?? []).map((field) => {
         const input = h('input', { type: field.secret ? 'password' : 'text', placeholder: field.placeholder ?? '', ariaLabel: field.label, autocomplete: 'off', required: !field.optional && !field.placeholder });

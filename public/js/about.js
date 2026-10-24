@@ -124,7 +124,7 @@ function render(a) {
       copy.textContent = 'Copied';
       setTimeout(() => (copy.textContent = 'Copy details'), 1500);
     } catch {
-      toast('Could not copy — select the text and copy it by hand', 'err');
+      toast('Could not copy. Select the text and copy it by hand', 'err');
     }
   };
   $('#about-body').replaceChildren(

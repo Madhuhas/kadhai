@@ -155,7 +155,7 @@ function connect() {
     // EventSource retries on its own; we only need to show that the link is down.
     $('#conn-dot').classList.remove('on');
     $('#route-label').textContent = 'server offline';
-    if (!warned && !state.switching) toast('Lost the Kadhai server — retrying…', 'err');
+    if (!warned && !state.switching) toast('Lost the Kadhai server, retrying…', 'err');
     warned = true;
   };
   events.onmessage = (e) => {

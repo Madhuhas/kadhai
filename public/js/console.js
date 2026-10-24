@@ -166,13 +166,13 @@ function welcome() {
   const notice = app.mock
     ? 'Demo mode: providers are simulated (with a fake 429 every third call), so replies are canned. Add a free API key to switch to real models.'
     : !app.hasProviders
-      ? 'No API keys yet. Add a free Gemini, Groq or Cerebras key to get started — it takes a minute and needs no card.'
+      ? 'No API keys yet. Add a free Gemini, Groq or Cerebras key to get started. It takes a minute and needs no card.'
       : '';
   return h(
     'div',
     { class: 'welcome' },
     h('pre', { class: 'banner', ariaLabel: 'Kadhai' }, BANNER),
-    h('div', null, h('b', null, 'What should we cook?'), 'Type what you want built in the box below. The crew plans it, writes it and checks it — watch them in the kitchen.'),
+    h('div', null, h('b', null, 'What should we cook?'), 'Type what you want built in the box below. The crew plans it, writes it and checks it, and you can watch them in the kitchen.'),
     h('div', { class: 'tip' }, 'Tip: start a line with ', h('code', null, '!'), ' to run a shell command yourself.'),
     notice && h('div', { class: 'notice' }, h('span', null, notice), button('Add API keys', 'primary', () => emit('openkeys'))),
   );
@@ -330,7 +330,7 @@ export function initConsole() {
         // Asked per task: it goes back to edits only after each one.
         const shell = !$('#agent-shell').hidden && $('#agent-shell-box').checked;
         $('#agent-shell-box').checked = false;
-        if ((await api.task(text, paths, shell)).queued) toast('Queued — it starts when the current task finishes');
+        if ((await api.task(text, paths, shell)).queued) toast('Queued. It starts when the current task finishes');
       }
     } catch (err) {
       input.value = text;

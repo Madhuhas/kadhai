@@ -543,7 +543,7 @@ textarea:focus, input[type='text']:focus, input[type='password']:focus {
 .dialog-body { min-height: 0; overflow: auto; padding: var(--s3) var(--s4) var(--s4); font-size: var(--t-ui); }
 .dialog-body p { margin: 0 0 var(--s3); line-height: 1.6; }
 .dialog-foot { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: var(--s2); padding: var(--s2) var(--s4); border-top: 1px solid var(--line); }
-.dialog-actions { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s1); }
+.dialog-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s1); }
 
 /* The terminal: opened from the taskbar. It takes the lower part of the stage rather than covering it, so
    whatever is above (the kitchen, a file) shrinks and can still be scrolled all the way. Not modal: no backdrop. */
@@ -625,6 +625,7 @@ textarea:focus, input[type='text']:focus, input[type='password']:focus {
 .metric { min-width: 0; padding: var(--s2) var(--s3); border: 1px solid var(--line); border-radius: var(--r-m); background: var(--raised); }
 .metric b { display: block; font: 500 var(--t-title) var(--font-mono); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .metric span { font: var(--t-micro) var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+@media (max-width: 620px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .metrics > :last-child { grid-column: 1 / -1; } }
 .thought { flex: none; height: 240px; margin: 0; padding: var(--s3); overflow: auto; border-radius: var(--r-m); background: var(--term-lines) local, var(--term-bg); color: var(--term-text); font: var(--t-small)/1.5 var(--font-mono); white-space: pre-wrap; word-break: break-word; }
 .thought:empty::before { content: 'Nothing yet. Its thoughts appear here, live, while it works.'; color: var(--term-muted); }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s2); }
@@ -637,6 +638,14 @@ textarea:focus, input[type='text']:focus, input[type='password']:focus {
 .routes [data-status='active'] { color: var(--ok); }
 .routes [data-status='cooling'] { color: var(--warn); }
 .routes [data-status='disabled'] { color: var(--err); }
+@media (max-width: 620px) {
+  .routes tr:first-child { display: none; }
+  .routes tr { display: block; padding: var(--s2) 0; border-bottom: 1px solid var(--line); }
+  .routes tr:last-child { border-bottom: 0; }
+  .routes td, .routes td.num { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s2); padding: 2px 0; border: 0; text-align: left; }
+  .routes td::before { content: attr(data-label); flex: 0 0 72px; color: var(--muted); font-size: var(--t-micro); text-transform: uppercase; letter-spacing: 0.06em; }
+  .routes td[data-label='#'] { display: none; }
+}
 
 /* A provider card: a header strip you can find at a glance, then its settings. One you use carries a green edge. */
 .key-card { margin: var(--s2) 0; padding: 0 var(--s3) var(--s3); border: 1px solid var(--faint); border-radius: var(--r-m); background: var(--panel); }
@@ -751,7 +760,7 @@ textarea:focus, input[type='text']:focus, input[type='password']:focus {
 .wire.loose { stroke: var(--text); stroke-dasharray: 3 3; }
 .wire-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
 .flow-welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s4); height: 100%; padding: var(--s5); text-align: center; cursor: default; }
-.flow-welcome pre { margin: 0; font: var(--t-small)/1.3 var(--font-mono); color: var(--muted); text-align: left; }
+.flow-welcome pre { max-width: 100%; margin: 0; overflow: hidden; font: min(var(--t-small), 2.2vw)/1.3 var(--font-mono); color: var(--muted); text-align: left; }
 .flow-welcome p { max-width: 54ch; margin: 0; line-height: 1.6; }
 
 /* A node: a small window. Its ports are the squares on its edges. */
@@ -1155,7 +1164,11 @@ textarea:focus, input[type='text']:focus, input[type='password']:focus {
   .crew { flex: none; }
   .crew-active { display: none; }
   .top-actions { flex: 1; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
-  .pill { max-width: 130px; }
+  .pill { max-width: 130px; padding: 2px 7px; }
+  .top-actions, .topbar { column-gap: 4px; }
+  .brand { gap: 6px; }
+  /* "low" or "high" is enough on a phone; the button's title still says flame. */
+  .flame-word { display: none; }
   .chat-controls .select { max-width: 9ch; }
   #app[data-max] { grid-template-rows: auto minmax(0, 1fr) auto; }
   /* Menus open the full width of the screen, under their button, instead of running off the side. */
@@ -1165,6 +1178,11 @@ textarea:focus, input[type='text']:focus, input[type='password']:focus {
   /* A one-line taskbar: what is used now and then moves into "more" (.phone-only entries). */
   :is(#route-pill, #term-btn, #keys-btn, #flows-btn, #mcp-btn, #layout-btn) { display: none; }
   .more-panel .phone-only { display: flex; }
+}
+@media (max-width: 380px) {
+  .pill { padding: 2px 5px; }
+  .beta-tag { padding: 0 3px; letter-spacing: 0.02em; }
+  .top-actions, .topbar { column-gap: 3px; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }

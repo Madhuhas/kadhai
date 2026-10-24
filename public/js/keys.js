@@ -119,7 +119,7 @@ function providerCard(provider, refresh, onClose) {
               ? `${provider.label} accepted the key`
               : result.checkable
                 ? `Saved, but ${provider.label} could not be reached to check it`
-                : `Saved. ${provider.label} keys cannot be checked in advance — the first task will tell`,
+                : `Saved. ${provider.label} keys cannot be checked in advance, so the first task will tell`,
             result.verified ? 'ok' : '',
           );
           if (result.needsModels) toast(`Now pick which ${provider.label} models to use`);
@@ -375,7 +375,7 @@ export function initKeys() {
       };
       const scroll = body.scrollTop;
       body.replaceChildren(
-        h('p', { class: 'muted' }, 'Any key works here: free tiers, paid accounts, a subscription CLI, a model on this computer. Add several and Kadhai switches to the next when one hits its limit. Keys are used straight away — no restart.'),
+        h('p', { class: 'muted' }, 'Any key works here: free tiers, paid accounts, a subscription CLI, a model on this computer. Add several and Kadhai switches to the next when one hits its limit. Keys are used straight away, with no restart.'),
         anyKeyForm(render),
         h('h4', null, 'subscriptions you already pay for'),
         h('p', { class: 'muted key-note' }, 'Kadhai can use a coding CLI you are signed in to as its model, so your subscription\'s limits do the work. It is tried before the free keys; when it runs out, the free ones take over. On low flame the CLI only answers: it never sees your folder. On high flame it can work as an agent on a copy of your folder; its changes come back through Kadhai, reviewed and undoable. Using a plan this way is up to each vendor\'s terms, which change: each card says what they said when this version was made.'),
@@ -393,7 +393,7 @@ export function initKeys() {
             ]
           : []),
         h('h4', null, `paid keys${paid.filter(inUse).length ? ` (${paid.filter(inUse).length} in use)` : ''}`),
-        h('p', { class: 'muted key-note' }, 'A key from an account with billing. Every call costs money there, and Kadhai cannot see your balance or prices — it counts tokens, so set a daily limit if you want a ceiling. When the limit is reached the free keys carry on.'),
+        h('p', { class: 'muted key-note' }, 'A key from an account with billing. Every call costs money there, and Kadhai cannot see your balance or prices. It counts tokens, so set a daily limit if you want a ceiling. When the limit is reached the free keys carry on.'),
         paidSettings(settings, render),
         h('div', { class: 'key-rows' }, ...paid.map((p) => (inUse(p) ? providerCard(p, render) : p.id === openId ? providerCard(p, render, show(null)) : providerRow(p, show(p.id))))),
         h('h4', null, 'another provider or a model on this computer'),

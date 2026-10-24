@@ -108,10 +108,10 @@ export class MemoryEngine {
 
   #render(state, locks) {
     const lockLines = locks.length
-      ? locks.slice(0, 20).map((l) => `- ${l.path} — ${l.owner}`)
+      ? locks.slice(0, 20).map((l) => `- ${l.path} (${l.owner})`)
       : ['- none'];
     return [
-      '# memory.md — Kadhai handoff state (auto-managed)',
+      '# memory.md: Kadhai handoff state (auto-managed)',
       '',
       `## ${SECTIONS.objective}`,
       state.objective || NONE,

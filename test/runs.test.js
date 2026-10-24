@@ -102,7 +102,7 @@ test('circuit breaker: steered, then a narrower job, then stopped early; two fai
   assert.match(engine.crew.snapshot().find((a) => a.id === 'chef-de-partie').thought, /\[breaker\] two rounds in a row went wrong[\s\S]*\[breaker\] 3 rounds in a row went wrong - this step stops here/);
 
   // Steps one and two failed (each after its retry): three is skipped, not cooked.
-  assert.match(result.reply, /\[-\] 3\. three — skipped: 2 steps before it failed/);
+  assert.match(result.reply, /\[-\] 3\. three: skipped: 2 steps before it failed/);
   assert.ok(!prompts.some((p) => p.user.includes('c.js') && p.user.includes('three')), 'no cook ever saw step three');
 });
 
@@ -130,7 +130,7 @@ test('high flame: a change touching sign-in gets one security pass, and its find
   engine.setFlame('high');
   const high = await engine.orchestrator.start('add a login again').done;
   assert.deepEqual(calls, { security: 1, fixer: 1 });
-  assert.match(high.reply, /\*\*Security:\*\* 1 issue\(s\) found — fixed by the Fixer/);
+  assert.match(high.reply, /\*\*Security:\*\* 1 issue\(s\) found, fixed by the Fixer/);
   assert.match(high.reply, /Apply security fixes/);
 
   // High flame, nothing sensitive in name or content: no extra call.
@@ -150,7 +150,7 @@ test('a Fixer that changes nothing is reported as such, not as a fix', async (t)
   const { engine } = await engineWith(completion);
   t.after(() => engine.close());
   const result = await engine.orchestrator.start('write the readme').done;
-  assert.match(result.reply, /\*\*Review:\*\* 1 issue\(s\) found — the Fixer changed nothing \(it judged the code already right\) - check: the import path is wrong/);
+  assert.match(result.reply, /\*\*Review:\*\* 1 issue\(s\) found, the Fixer changed nothing \(it judged the code already right\) - check: the import path is wrong/);
   assert.doesNotMatch(result.reply, /fixed by the Fixer/);
 });
 

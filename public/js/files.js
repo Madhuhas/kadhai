@@ -37,7 +37,7 @@ let moving = false; // while a move is in flight, the open file's old path is ex
 const collapsed = new Set();
 
 const lockOwner = (path) => state.locks.find((l) => same(l.path, path))?.owner;
-const fail = (err) => toast(err.status === 423 ? `${err.message} — try again in a moment` : err.message, 'err');
+const fail = (err) => toast(err.status === 423 ? `${err.message} (try again in a moment)` : err.message, 'err');
 
 // ================================================================== the tree
 
@@ -356,7 +356,7 @@ function renderStage() {
   $('#file-cancel').hidden = !editing;
 
   if (current.binary) {
-    body.replaceChildren(h('div', { class: 'empty' }, 'This is a binary file — there is nothing to show.'));
+    body.replaceChildren(h('div', { class: 'empty' }, 'This is a binary file, so there is nothing to show.'));
     return;
   }
   if (editing) {

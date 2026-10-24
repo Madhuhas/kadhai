@@ -171,7 +171,7 @@ export class McpHub {
             server.tools = [];
             this.#changed();
           }
-          reject(new Error(`it stopped (exit ${code})${server.lastLog ? `: ${server.lastLog}` : ' — check the command'}`));
+          reject(new Error(`it stopped (exit ${code})${server.lastLog ? `: ${server.lastLog}` : ', check the command'}`));
         });
       });
       exited.catch(() => {});
@@ -210,7 +210,7 @@ export class McpHub {
         const askedToSignIn = Boolean(server.signInUrl);
         server.status = askedToSignIn ? 'signin' : 'error';
         const waitedForSignIn = askedToSignIn || spec.startupTimeoutMs > STARTUP_TIMEOUT_MS;
-        server.error = waitedForSignIn ? SIGN_IN_WAITING : !/timed out/.test(err.message) ? err.message : 'no answer — is this really an MCP server?';
+        server.error = waitedForSignIn ? SIGN_IN_WAITING : !/timed out/.test(err.message) ? err.message : 'no answer. Is this really an MCP server?';
         server.signInUrl = null;
         log.warn(`MCP server "${safeName}" failed: ${server.error}`);
         if (askedToSignIn && saved) {

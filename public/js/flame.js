@@ -22,7 +22,7 @@ const strongRoutes = () => (state.providers.routes ?? []).some((r) => r.paid || 
 function render() {
   const flame = info.flame;
   const pill = $('#flame-pill');
-  pill.textContent = `${flame} flame`;
+  pill.replaceChildren(flame, h('span', { class: 'flame-word' }, ' flame'));
   pill.classList.toggle('hot', flame === 'high');
   const choice = (id) =>
     h(

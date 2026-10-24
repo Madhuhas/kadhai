@@ -148,7 +148,7 @@ test('engine: sandbox, memory.md, a full hub-and-spoke run, and the MCP surface'
   const handle = await locks.acquire('notes.txt', 'coder');
   await assert.rejects(workspace.writeFile('notes.txt', 'x', { owner: 'user', timeoutMs: 100 }), { code: 'ELOCKED' });
   await memory.flush();
-  assert.match(await memory.read(), /- notes\.txt — coder/);
+  assert.match(await memory.read(), /- notes\.txt \(coder\)/);
   await handle.release();
 
   // Full run: the Chef plans -> cooks write two files -> the Taster approves.

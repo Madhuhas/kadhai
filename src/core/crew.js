@@ -417,7 +417,7 @@ export class Crew {
   async #waitWhilePaused(agent, signal) {
     while (agent.paused) {
       signal?.throwIfAborted();
-      this.think(agent.id, '\n[paused] by operator — waiting for resume\n');
+      this.think(agent.id, '\n[paused] by the operator, waiting to resume\n');
       await new Promise((resolve, reject) => {
         const onAbort = () => reject(signal.reason);
         signal?.addEventListener('abort', onAbort, { once: true });
@@ -525,7 +525,7 @@ export class Crew {
           prefer,
           signal,
           onDelta: (delta) => {
-            if (delta.type === 'reset') this.think(id, '\n⟲ provider hot-swap — re-syncing from memory.md\n');
+            if (delta.type === 'reset') this.think(id, '\n[swap] new provider, starting again from memory.md\n');
             else if (delta.text) this.think(id, delta.text);
           },
           onRoute: (route) => {
@@ -534,7 +534,7 @@ export class Crew {
             agent.route = route;
             this.setState(id, 'working');
           },
-          onWait: (ms) => this.setState(id, 'limit-reached', `Rate-limited — retrying in ${Math.ceil(ms / 1000)}s`),
+          onWait: (ms) => this.setState(id, 'limit-reached', `Rate-limited, retrying in ${Math.ceil(ms / 1000)}s`),
         },
       );
       agent.metrics.calls += 1;

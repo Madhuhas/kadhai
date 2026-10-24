@@ -79,7 +79,7 @@ export const CATALOG = [
   { id: 'zapier', name: 'Zapier', icon: 'ZAP', category: 'Work & projects', type: 'signin', checked: 'live', blurb: 'Thousands of apps through your Zapier account', run: remote('https://mcp.zapier.com/api/mcp/mcp') },
 
   // ----------------------------------------------------------- Web & search
-  { id: 'duckduckgo', name: 'Web search', icon: 'DDG', category: 'Web & search', type: 'local', checked: 'starts', blurb: 'Search the web with DuckDuckGo — no key needed (it may refuse searches that come too fast)', run: ['npx', '-y', 'duckduckgo-mcp-server'] },
+  { id: 'duckduckgo', name: 'Web search', icon: 'DDG', category: 'Web & search', type: 'local', checked: 'starts', blurb: 'Search the web with DuckDuckGo, no key needed (it may refuse searches that come too fast)', run: ['npx', '-y', 'duckduckgo-mcp-server'] },
   { id: 'exa', name: 'Exa search', icon: 'EXA', category: 'Web & search', type: 'open', checked: 'used', blurb: 'Search the web and fetch pages with Exa', run: remote('https://mcp.exa.ai/mcp') },
   {
     id: 'brave',

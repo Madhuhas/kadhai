@@ -140,7 +140,7 @@ function renderFloor() {
 
   floor.title.textContent = !cooking ? 'Ready when you are' : plan ? plan.objective : 'Reading your order…';
   floor.sub.textContent = !cooking
-    ? 'Tell the crew what to cook in the chat on the right.'
+    ? 'Tell the crew what to cook in the chat.'
     : plan
       ? progress(plan)
       : 'The Chef is planning';
@@ -271,7 +271,7 @@ function renderAgent() {
     metric('Calls', fmtNum(m.calls)),
     metric('Tokens', fmtNum(m.promptTokens + m.completionTokens), `${m.promptTokens} in, ${m.completionTokens} out`),
     metric('Swaps', fmtNum(m.swaps), 'Provider hot-swaps during calls by this agent'),
-    metric('Latency', m.lastLatencyMs ? `${(m.lastLatencyMs / 1000).toFixed(1)}s` : '—'),
+    metric('Latency', m.lastLatencyMs ? `${(m.lastLatencyMs / 1000).toFixed(1)}s` : '-'),
     metric('Model', agent.route ? agent.route.model : 'not used yet', agent.route ? agent.route.label : ''),
   );
 }

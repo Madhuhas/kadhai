@@ -1,7 +1,7 @@
 {
   "name": "kadhai",
   "version": "1.0.0-beta.2",
-  "description": "A local-first workspace where a crew of AI agents builds, tests and automates for you. Your models, your keys, your machine.",
+  "description": "A crew of AI agents that plans, writes, checks and fixes code in a folder on your computer, on free model tiers or your own keys.",
   "type": "module",
   "main": "server.js",
   "bin": {

@@ -127,7 +127,7 @@ test('run: edit retry, verification, checkpoint diff, undo, queue and persistenc
 
   const one = await first.done;
   assert.equal(one.ok, true, one.reply);
-  assert.match(one.reply, /\*\*Verify:\*\* `node calc\.js` — passed/);
+  assert.match(one.reply, /\*\*Verify:\*\* `node calc\.js`: passed/);
   assert.equal(coderPrompts.filter((p) => p.includes('Fix the operator')).length, 2, 'the failed EDIT was retried once');
   assert.match(coderPrompts[1], /EDIT of calc\.js was NOT applied/);
   assert.match(await fs.readFile(path.join(workspaceDir, 'calc.js'), 'utf8'), /a \+ b/);
@@ -186,7 +186,7 @@ test('review: a failing verification forces a fix round even if the Reviewer app
   assert.equal(coderCalls, 2, 'a cook was sent back to fix the failing check');
   assert.equal(result.ok, true, result.reply);
   assert.match(result.reply, /Verify:.*passed/);
-  assert.match(result.reply, /Review:\*\* 1 issue\(s\) found — fixed by the Fixer/);
+  assert.match(result.reply, /Review:\*\* 1 issue\(s\) found, fixed by the Fixer/);
 });
 
 test('keys: added from the dashboard, verified, used live, masked, and removable', async (t) => {

@@ -1626,7 +1626,7 @@ function lastRunBlock(node) {
 
 function renderSettings() {
   const panel = $('#flow-settings');
-  if (!draft) return panel.replaceChildren(h('h4', { class: 'first' }, 'settings'), h('p', { class: 'muted' }, 'Open a flow on the left, or draw a new one. The settings of the node you pick appear here.'));
+  if (!draft) return panel.replaceChildren(h('h4', { class: 'first' }, 'settings'), h('p', { class: 'muted' }, 'Open a flow from the list, or draw a new one. The settings of the node you pick appear here.'));
   if (ndvId) return panel.replaceChildren(h('p', { class: 'muted' }, 'Editing in the large view.'));
 
   if (pickedEdge != null && draft.edges[pickedEdge]) {

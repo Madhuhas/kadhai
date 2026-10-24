@@ -348,7 +348,7 @@ export class Orchestrator {
     await this.checkpoints.restore(run.before);
     run.undone = true;
     await this.memory.set({ milestone: `Undid the run "${run.objective}"` });
-    this.say('manager', `Undid **${run.objective}** — the workspace is back to how it was before that run.`);
+    this.say('manager', `Undid **${run.objective}**. The workspace is back to how it was before that run.`);
     this.bus.publish('fs:change', { paths: [] });
     this.bus.publish('runs:update', { runs: this.runsView() });
     return { undone: run.id };
@@ -509,7 +509,7 @@ export class Orchestrator {
       outcome.deleted.forEach((f) => changed.delete(f));
       mark(index, outcome.ok ? 'done' : 'failed', outcome.summary);
       await this.memory.set({
-        milestone: `${subtask.title} — ${outcome.ok ? '' : 'FAILED: '}${outcome.summary}`,
+        milestone: `${subtask.title}: ${outcome.ok ? '' : 'FAILED: '}${outcome.summary}`,
       });
       return outcome;
     };
@@ -585,8 +585,8 @@ export class Orchestrator {
           ? 'skipped - the Taster is switched off'
           : ''
         : review.verdict === 'approve'
-          ? `approved — ${review.summary}`
-          : `${review.issues.length} issue(s) found — ${fixResult(review)}`;
+          ? `approved: ${review.summary}`
+          : `${review.issues.length} issue(s) found, ${fixResult(review)}`;
 
       await this.memory.set({
         milestone: `Finished "${objective}": ${done}/${total} sub-tasks ok${verification?.ran ? `, verify ${verification.ok ? 'passed' : 'FAILED'}` : ''}${files.length ? `; files: ${files.join(', ')}` : ''}`,
@@ -594,15 +594,15 @@ export class Orchestrator {
 
       const lines = [
         `**${objective}**`,
-        ...run.plan.subtasks.map((s, i) => `${s.status === 'done' ? '[x]' : s.status === 'skipped' ? '[-]' : '[!]'} ${i + 1}. ${s.title} — ${s.summary}`),
+        ...run.plan.subtasks.map((s, i) => `${s.status === 'done' ? '[x]' : s.status === 'skipped' ? '[-]' : '[!]'} ${i + 1}. ${s.title}: ${s.summary}`),
       ];
       if (files.length) lines.push(`**Files:** ${files.map((f) => `\`${f}\``).join(', ')}`);
       if (verification) {
-        lines.push(`**Verify:** \`${verification.command}\` — ${verification.ran ? (verification.ok ? 'passed' : 'FAILED') : verification.text}`);
+        lines.push(`**Verify:** \`${verification.command}\`: ${verification.ran ? (verification.ok ? 'passed' : 'FAILED') : verification.text}`);
       }
       if (reviewLine) lines.push(`**Review:** ${reviewLine}`);
       if (security) {
-        lines.push(`**Security:** ${security.verdict === 'approve' ? 'no problems found' : `${security.issues.length} issue(s) found — ${fixResult(security)}`}`);
+        lines.push(`**Security:** ${security.verdict === 'approve' ? 'no problems found' : `${security.issues.length} issue(s) found, ${fixResult(security)}`}`);
       }
       return { runId: run.id, ok: done === total && verified, reply: lines.join('\n'), changed: files };
     } catch (err) {

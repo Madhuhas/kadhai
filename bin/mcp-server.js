@@ -20,4 +20,4 @@ stdioPeer({
     process.exit(0);
   },
 });
-log.info(`MCP server ready on stdio — workspace: ${engine.config.workspaceDir}`);
+log.info(`MCP server ready on stdio, workspace: ${engine.config.workspaceDir}`);

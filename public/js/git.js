@@ -54,7 +54,7 @@ function fileRow(file, staged) {
       class: 'scm-file',
       role: 'button',
       tabIndex: 0,
-      title: `${file.path} — ${MEANING[letter] ?? letter}${file.conflicted ? ' (conflict)' : ''}\nClick to see the change`,
+      title: `${file.path}: ${MEANING[letter] ?? letter}${file.conflicted ? ' (conflict)' : ''}\nClick to see the change`,
       onclick: async () => {
         try {
           const diff = await api.git.diff(file.path, staged);
@@ -184,7 +184,7 @@ function render() {
     h('div', { class: 'scm-commit' }, commit),
     ...group('Staged', staged, true),
     ...group('Changes', unstaged, false),
-    ...(status.files.length ? [] : [h('p', { class: 'scm-note' }, status.hasCommits ? 'Nothing to commit — everything is saved in git.' : 'No changes yet. Add some files, then make your first commit.')]),
+    ...(status.files.length ? [] : [h('p', { class: 'scm-note' }, status.hasCommits ? 'Nothing to commit. Everything is saved in git.' : 'No changes yet. Add some files, then make your first commit.')]),
     ...sync,
     h(
       'button',

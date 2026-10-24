@@ -7,7 +7,7 @@
 
 **Website:** [kadhai.pages.dev](https://kadhai.pages.dev) · **Download:** [releases](https://github.com/Madhuhas/kadhai/releases) · **Community:** [discussions](https://github.com/Madhuhas/kadhai/discussions)
 
-**A local-first workspace where a crew of AI agents builds, tests and automates for you. Your models, your keys, your machine.**
+**A crew of AI agents that plans, writes, checks and fixes code in a folder on your computer, on free model tiers or your own keys.**
 
 > **Beta.** Kadhai works and is used every day, and it is still being polished. Expect rough edges, and please report what breaks.
 
@@ -17,12 +17,12 @@ It runs entirely on **free AI model tiers** (Gemini, Groq, Cerebras and seven mo
 
 ## Highlights
 
-- **A crew, not a chatbot.** Planning, coding, checking and fixing are separate agents with separate jobs, coordinated by plain code. Every step has a fixed budget of model calls, so runs are predictable and cheap. Hire your own specialists, or have the Chef write one for you, and switch off any agent a job does not need.
+- **Separate agents for separate jobs.** Planning, coding, checking and fixing are separate agents with separate jobs, coordinated by plain code. Every step has a fixed budget of model calls, so runs are predictable and cheap. Hire your own specialists, or have the Chef write one for you, and switch off any agent a job does not need.
 - **Free by default.** One small Node process with a single dependency, no GPU, no build step. Automatic failover across providers keeps going when a free tier says "slow down".
-- **Safe by design.** Listens only on your own computer. The crew cannot leave its folder. Commands wait for your approval. Every secret is encrypted on disk. Every run can be diffed and undone.
+- **You stay in charge.** Listens only on your own computer. The crew cannot leave its folder. Commands wait for your approval. Every secret is encrypted on disk. Every run can be diffed and undone.
 - **Flows.** Draw automations on a canvas (schedules, feeds, webhooks, AI, logic, HTTP and fifteen built-in services), or just describe one in words and let the Chef draw it. Try any flow safely first: reads run for real, anything that would send or change something is held back and shown.
-- **Connections.** About fifty services the crew can use while it works (web search, a browser, GitHub, Notion, Linear and more), plus Google Drive, Gmail and Calendar, read-only.
-- **Plays well with others.** Kadhai is an MCP server and client and an ACP agent, so Claude Desktop, Claude Code, Cursor or Zed can hand it work, and it can use their tools.
+- **Connections.** More than sixty services the crew can use while it works (web search, a browser, GitHub, Notion, Linear and more), plus Google Drive, Gmail and Calendar, read-only.
+- **Works with your editor.** Kadhai is an MCP server and client and an ACP agent, so Claude Desktop, Claude Code, Cursor or Zed can hand it work, and it can use their tools.
 - **A kitchen you can watch.** A 3D kadhai and 3D cooks drawn entirely in text characters: the Chef hands out tickets, cooks walk up to the pot, dishes go to the Taster, and the crew cheer or slump when the run ends. Nine themes with their own fonts, shapes and effects.
 
 ## Quick start

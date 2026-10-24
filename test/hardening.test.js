@@ -721,7 +721,7 @@ test('a check command is run whole or not at all - never cut short', async () =>
   const tooLong = `node -e "${'var a=1;  '.repeat(110)}process.exit(0)"`;
   assert.ok(long.length > 300 && long.length <= 1000 && tooLong.length > 1000);
   for (const [verify, expected] of [
-    [long, /\*\*Verify:\*\* `node -e .*process\.exit\(0\)"` — passed/],
+    [long, /\*\*Verify:\*\* `node -e .*process\.exit\(0\)"`: passed/],
     [tooLong, null],
   ]) {
     const dir = await tmpDir('verify');

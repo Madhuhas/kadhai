@@ -96,12 +96,15 @@ function statusText(route) {
 
 // Only some providers report what is left; the rest honestly show a dash.
 function quotaText(quota) {
-  if (!quota) return '—';
+  if (!quota) return '-';
   const parts = [];
   if (quota.remainingRequests != null) parts.push(`${fmtNum(quota.remainingRequests)} req`);
   if (quota.remainingTokens != null) parts.push(`${fmtNum(quota.remainingTokens)} tok`);
-  return parts.join(' · ') || '—';
+  return parts.join(' · ') || '-';
 }
+
+// On a phone each row becomes a small card, and data-label names each value (app.css).
+const COLUMNS = ['#', 'Provider', 'Model', 'Status', 'Today', 'Left', '429s'];
 
 function renderRoutes() {
   const { routes } = state.providers;
@@ -113,18 +116,18 @@ function renderRoutes() {
   const table = h(
     'table',
     { class: 'routes' },
-    h('tr', null, ...['#', 'Provider', 'Model', 'Status', 'Today', 'Left', '429s'].map((t) => h('th', null, t))),
+    h('tr', null, ...COLUMNS.map((t) => h('th', null, t))),
     ...routes.map((r, i) =>
       h(
         'tr',
         { title: r.reason ?? '' },
-        h('td', null, String(i + 1)),
-        h('td', null, r.label, r.paid ? h('span', { class: 'badge', title: 'Billed to your account' }, 'paid') : null),
-        h('td', null, r.model),
-        h('td', { dataset: { status: r.status } }, statusText(r)),
-        h('td', { class: 'num' }, `${fmtNum(r.day.calls)} calls · ${fmtNum(r.day.promptTokens + r.day.completionTokens)} tok`),
-        h('td', { class: 'num' }, quotaText(r.quota)),
-        h('td', { class: 'num' }, fmtNum(r.day.rateLimits)),
+        h('td', { dataset: { label: '#' } }, String(i + 1)),
+        h('td', { dataset: { label: 'Provider' } }, r.label, r.paid ? h('span', { class: 'badge', title: 'Billed to your account' }, 'paid') : null),
+        h('td', { dataset: { label: 'Model' } }, r.model),
+        h('td', { dataset: { status: r.status, label: 'Status' } }, statusText(r)),
+        h('td', { class: 'num', dataset: { label: 'Today' } }, `${fmtNum(r.day.calls)} calls · ${fmtNum(r.day.promptTokens + r.day.completionTokens)} tok`),
+        h('td', { class: 'num', dataset: { label: 'Left' } }, quotaText(r.quota)),
+        h('td', { class: 'num', dataset: { label: '429s' } }, fmtNum(r.day.rateLimits)),
       ),
     ),
   );
