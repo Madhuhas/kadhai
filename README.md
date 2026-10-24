@@ -4,6 +4,8 @@
 [![Release](https://img.shields.io/github/v/release/Madhuhas/kadhai?include_prereleases&label=release)](https://github.com/Madhuhas/kadhai/releases)
 [![License](https://img.shields.io/github/license/Madhuhas/kadhai)](LICENSE)
 
+**Website:** [kadhai.pages.dev](https://kadhai.pages.dev) · **Download:** [releases](https://github.com/Madhuhas/kadhai/releases) · **Community:** [discussions](https://github.com/Madhuhas/kadhai/discussions)
+
 **A local-first workspace where a crew of AI agents builds, tests and automates for you. Your models, your keys, your machine.**
 
 > **Beta.** Kadhai works and is used every day, and it is still being polished. Expect rough edges, and please report what breaks.
