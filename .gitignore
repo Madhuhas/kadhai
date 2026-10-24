@@ -1,0 +1,20 @@
+node_modules/
+.env
+workspace/
+mcp.config.json
+*.log
+keys.local.json
+agents.local.json
+settings.local.json
+connectors.local.json
+triggers.local.json
+flows.local.json
+skills.local/
+rooms.local/
+secret.local.key
+credentials.local.json
+flows.local.runs.json
+# a pixel-art pack the kitchen was drawn after: its licence forbids redistributing it
+kitchenkascade.rar
+# the desktop app: what electron-builder makes
+desktop/dist/

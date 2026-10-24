@@ -1,0 +1,641 @@
+/*
+ * Themes are nothing but variable sets. The look is described in theme.md:
+ * a small retro desktop - dotted canvas, grey window chrome, one monospaced
+ * face, almost no colour. Light (that look) is the default; the others follow
+ * well-known palettes. Pick one under more -> Theme.
+ *
+ * Surfaces step up in three levels: --bg (the canvas) < --panel (a window's
+ * content) < --raised (cards and controls). --line is a hairline. Anything
+ * code-like sits on the --term-* surface, a plain dark terminal, in both themes.
+ */
+:root {
+  /* One spacing scale and one type scale for the whole app. */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  /* Exact at ordinary widths, growing a little on very wide screens. */
+  --t-micro: clamp(11.5px, 0.8vw, 14px);
+  --t-small: clamp(12.5px, 0.88vw, 15px);
+  --t-ui: clamp(13px, 0.92vw, 16px);
+  --t-body: clamp(13.5px, 0.96vw, 17px);
+  --t-title: clamp(15px, 1.05vw, 19px);
+  /* No web font (the app works offline): JetBrains Mono if it is installed. */
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', 'Cascadia Code', Consolas, 'SF Mono', Menlo, 'Courier New', monospace;
+  --font-ui: var(--font-mono);
+  /* Titles and chat prose follow the UI face unless a theme gives them their own. */
+  --font-head: var(--font-ui);
+  --font-prose: var(--font-ui);
+  /* The 3D kitchen is coloured by what each character is made of (ascii3d.js: html()). Light values here;
+     dark-toned themes override them in app.css, and a few themes in looks.css. */
+  --m-iron: #4d4d4d;
+  --m-inside: #7b6a55;
+  --m-rim: #1f1f1f;
+  --m-oil: #c47f12;
+  --m-bubble: #e39a1c;
+  --m-fire: #d4410c;
+  --m-flame: #ee8a00;
+  --m-steam: #a3a3a3;
+  --m-stove: #5c5c5c;
+  --m-hat: #8f8f8f;
+  --m-skin: #b0703c;
+  --m-legs: #555555;
+  --m-shoes: #2e2e2e;
+  --m-tool: #8a6d3b;
+  --m-blade: #6f7c86;
+  --m-board: #9b6a35;
+  --m-veg: #3f8f2f;
+  --m-bowl: #7d8a94;
+  --m-eye: #111111;
+  --m-trim: #b0b0b0;
+  --m-tile: #e2e2e2;
+  --m-sky: #cfe3f5;
+  --m-sun: #e0a000;
+  --m-cloud: #8f9aa3;
+  --m-moon: #8a8455;
+  --m-star: #b3a24a;
+  --m-frame: #8a6136;
+  --m-ticket: #3b3b3b;
+  --m-chalk: #2f3d2f;
+  --m-counter: #6b747b;
+  --m-cabinet: #b8b8b8;
+  --m-floor: #c9c9c9;
+  /* How the 3D kitchen shades, darkest to brightest (ascii3d.js reads it). */
+  --ascii-ramp: '.:;=+*#%@';
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --r-s: 3px;
+  --r-m: 4px;
+  --r-l: 5px;
+
+  /* The terminal looks the same in both themes. */
+  --term-bg: #0c0c0c;
+  --term-text: #cccccc;
+  --term-cmd: #ffffff;
+  --term-muted: #808080;
+  --term-err: #f14c4c;
+  --term-caret: #ffffff;
+  --term-lines: none;
+  /* Shell colours for commands, typed or shown. */
+  --sh-program: #f9f1a5;
+  --sh-flag: #6cb6ff;
+  --sh-string: #ce9178;
+  --sh-op: #d670d6;
+  --sh-var: #4ec9b0;
+  --sh-number: #b5cea8;
+  --sh-comment: #6a9955;
+}
+
+:root,
+[data-theme='light'] {
+  --bg: #e6e6e6;
+  --dot: #b8b8b8;
+  --panel: #ffffff;
+  --raised: #fafafa;
+  --hover: #f1f1f1;
+  --line: #e0e0e0;
+  --line-soft: #f0f0f0;
+  --text: #111111;
+  --muted: #666666;
+  --faint: #aaaaaa;
+  --accent: #111111;
+  --accent-ink: #ffffff;
+  --ok: #2f8f46;
+  --warn: #a66a00;
+  --err: #c0504d;
+
+  --bar-bg: rgba(196, 196, 196, 0.94);
+  --bar-border: #aaaaaa;
+  --bar-text: #2a2a2a;
+  --w-border: #999999;
+  --w-shadow: rgba(0, 0, 0, 0.16);
+  --w-title: linear-gradient(180deg, #dcdcdc 0%, #cacaca 100%);
+  --w-title-border: #aaaaaa;
+  --w-title-text: #1a1a1a;
+  --btn-on-bg: #ffffff;
+  --btn-on-fg: #111111;
+  --btn-off-bg: #c0c0c0;
+  --btn-off-fg: #555555;
+  --btn-border: #999999;
+
+  --tok-kw: #7c3aed;
+  --tok-str: #2f8f46;
+  --tok-num: #b45309;
+  --tok-fn: #2563eb;
+
+  --selection: #b9d3f0;
+  --shadow: 4px 4px 0 var(--w-shadow);
+  --key: 0 2px 0 var(--line), 0 3px 5px rgba(0, 0, 0, 0.1);
+  color-scheme: light;
+}
+
+/* Dark follows VS Code's "Dark Modern": flat grey panels, one blue accent. */
+[data-theme='dark'] {
+  --bg: #181818;
+  --dot: #181818;
+  --panel: #1f1f1f;
+  --raised: #252526;
+  --hover: #2a2d2e;
+  --line: #2b2b2b;
+  --line-soft: #252526;
+  --text: #cccccc;
+  --muted: #9d9d9d;
+  --faint: #5a5a5a;
+  --accent: #0078d4;
+  --accent-ink: #ffffff;
+  --ok: #89d185;
+  --warn: #cca700;
+  --err: #f14c4c;
+
+  --bar-bg: #181818;
+  --bar-border: #2b2b2b;
+  --bar-text: #cccccc;
+  --w-border: #2b2b2b;
+  --w-shadow: rgba(0, 0, 0, 0.36);
+  --w-title: #181818;
+  --w-title-border: #2b2b2b;
+  --w-title-text: #cccccc;
+  --btn-on-bg: #2a2d2e;
+  --btn-on-fg: #ffffff;
+  --btn-off-bg: #181818;
+  --btn-off-fg: #9d9d9d;
+  --btn-border: #2b2b2b;
+
+  --tok-kw: #569cd6;
+  --tok-str: #ce9178;
+  --tok-num: #b5cea8;
+  --tok-fn: #dcdcaa;
+
+  --field-bg: #313131;
+  --field-line: #3c3c3c;
+  --selection: #264f78;
+  --pop-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --backdrop: rgba(0, 0, 0, 0.55);
+  --shadow: none;
+  --key: none;
+  color-scheme: dark;
+}
+
+/*
+ * More themes. Each is a full variable set; the few rules that are not variables
+ * live in app.css, grouped by kind: "flat" themes (Dark, Normal light, Solarized,
+ * Dracula, Nord, High contrast) get VS Code's flat 1px chrome, and "dark-toned"
+ * ones (Dark, Dracula, Nord, Cyberpunk, Amber, High contrast) get light agent
+ * colours. Cyberpunk and Amber keep the retro hard shadow and add a glow.
+ */
+
+/* Normal light: VS Code's "Light Modern" - white panels, flat frames, one blue accent. */
+[data-theme='modern'] {
+  --font-ui: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: Consolas, 'Cascadia Mono', 'JetBrains Mono', 'SF Mono', Menlo, 'Courier New', monospace;
+  --r-s: 4px;
+  --r-m: 6px;
+  --r-l: 8px;
+  --ascii-ramp: '.:;=+*#%@';
+  --bg: #f8f8f8;
+  --dot: #f8f8f8;
+  --panel: #ffffff;
+  --raised: #f8f8f8;
+  --hover: #f2f2f2;
+  --line: #e5e5e5;
+  --line-soft: #f0f0f0;
+  --text: #3b3b3b;
+  --muted: #616161;
+  --faint: #a0a0a0;
+  --accent: #005fb8;
+  --accent-ink: #ffffff;
+  --ok: #388a34;
+  --warn: #bf8803;
+  --err: #e51400;
+
+  --bar-bg: #f8f8f8;
+  --bar-border: #e5e5e5;
+  --bar-text: #3b3b3b;
+  --w-border: #e5e5e5;
+  --w-shadow: rgba(0, 0, 0, 0.08);
+  --w-title: #f8f8f8;
+  --w-title-border: #e5e5e5;
+  --w-title-text: #3b3b3b;
+  --btn-on-bg: #ffffff;
+  --btn-on-fg: #3b3b3b;
+  --btn-off-bg: #f8f8f8;
+  --btn-off-fg: #616161;
+  --btn-border: #e5e5e5;
+
+  --tok-kw: #0000ff;
+  --tok-str: #a31515;
+  --tok-num: #098658;
+  --tok-fn: #795e26;
+
+  --field-bg: #ffffff;
+  --field-line: #cecece;
+  --selection: #add6ff;
+  --pop-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  --backdrop: rgba(0, 0, 0, 0.25);
+  --shadow: none;
+  --key: none;
+  color-scheme: light;
+}
+
+/* Solarized light: Ethan Schoonover's palette, warm cream paper. */
+[data-theme='solarized'] {
+  --font-ui: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-head: Georgia, Cambria, 'Times New Roman', serif;
+  --font-prose: Georgia, Cambria, 'Times New Roman', serif;
+  --font-mono: Consolas, 'Cascadia Mono', 'JetBrains Mono', 'SF Mono', Menlo, 'Courier New', monospace;
+  --r-s: 5px;
+  --r-m: 8px;
+  --r-l: 10px;
+  --ascii-ramp: '.:;ioO0@';
+  --bg: #eee8d5;
+  --dot: #eee8d5;
+  --panel: #fdf6e3;
+  --raised: #f6efdb;
+  --hover: #eee8d5;
+  --line: #e2dbc5;
+  --line-soft: #efe8d4;
+  --text: #4f6168;
+  --muted: #5e6e70;
+  --faint: #a9b4b4;
+  --accent: #1d6fa8;
+  --accent-ink: #fdf6e3;
+  --ok: #859900;
+  --warn: #b58900;
+  --err: #dc322f;
+
+  --bar-bg: #eee8d5;
+  --bar-border: #ddd6c1;
+  --bar-text: #4f6168;
+  --w-border: #ddd6c1;
+  --w-shadow: rgba(0, 0, 0, 0.08);
+  --w-title: #eee8d5;
+  --w-title-border: #ddd6c1;
+  --w-title-text: #4f6168;
+  --btn-on-bg: #fdf6e3;
+  --btn-on-fg: #4f6168;
+  --btn-off-bg: #eee8d5;
+  --btn-off-fg: #5e6e70;
+  --btn-border: #ddd6c1;
+
+  --tok-kw: #859900;
+  --tok-str: #2aa198;
+  --tok-num: #d33682;
+  --tok-fn: #268bd2;
+
+  --term-bg: #002b36;
+  --term-text: #93a1a1;
+  --term-cmd: #eee8d5;
+  --term-muted: #8a9a9c;
+  --term-err: #dc322f;
+  --term-caret: #eee8d5;
+  --sh-program: #b58900;
+  --sh-flag: #268bd2;
+  --sh-string: #2aa198;
+  --sh-op: #d33682;
+  --sh-var: #6c71c4;
+  --sh-number: #cb4b16;
+  --sh-comment: #586e75;
+
+  --field-bg: #fdf6e3;
+  --field-line: #d3cbb7;
+  --selection: #c9e0f0;
+  --pop-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  --backdrop: rgba(0, 43, 54, 0.25);
+  --shadow: none;
+  --key: none;
+  color-scheme: light;
+}
+
+/* Dracula: dark purple-grey, pink, green and purple. */
+[data-theme='dracula'] {
+  --font-ui: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: Consolas, 'Cascadia Mono', 'JetBrains Mono', 'SF Mono', Menlo, 'Courier New', monospace;
+  --r-s: 6px;
+  --r-m: 8px;
+  --r-l: 10px;
+  --ascii-ramp: '.:;=+*#%@';
+  --bg: #21222c;
+  --dot: #21222c;
+  --panel: #282a36;
+  --raised: #2f3140;
+  --hover: #343746;
+  --line: #343746;
+  --line-soft: #2c2e3b;
+  --text: #f8f8f2;
+  --muted: #a7abbe;
+  --faint: #6272a4;
+  --accent: #bd93f9;
+  --accent-ink: #21222c;
+  --ok: #50fa7b;
+  --warn: #f1fa8c;
+  --err: #ff5555;
+
+  --bar-bg: #21222c;
+  --bar-border: #191a21;
+  --bar-text: #f8f8f2;
+  --w-border: #191a21;
+  --w-shadow: rgba(0, 0, 0, 0.4);
+  --w-title: #21222c;
+  --w-title-border: #191a21;
+  --w-title-text: #f8f8f2;
+  --btn-on-bg: #44475a;
+  --btn-on-fg: #f8f8f2;
+  --btn-off-bg: #21222c;
+  --btn-off-fg: #a7abbe;
+  --btn-border: #343746;
+
+  --tok-kw: #ff79c6;
+  --tok-str: #f1fa8c;
+  --tok-num: #bd93f9;
+  --tok-fn: #50fa7b;
+
+  --term-bg: #1e1f29;
+  --term-text: #f8f8f2;
+  --term-cmd: #ffffff;
+  --term-muted: #8d97c4;
+  --term-err: #ff5555;
+  --term-caret: #f8f8f2;
+  --sh-program: #50fa7b;
+  --sh-flag: #8be9fd;
+  --sh-string: #f1fa8c;
+  --sh-op: #ff79c6;
+  --sh-var: #bd93f9;
+  --sh-number: #bd93f9;
+  --sh-comment: #6272a4;
+
+  --field-bg: #1e1f29;
+  --field-line: #44475a;
+  --selection: #44475a;
+  --pop-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --backdrop: rgba(0, 0, 0, 0.55);
+  --shadow: none;
+  --key: none;
+  color-scheme: dark;
+}
+
+/* Nord: the arctic palette - polar-night greys, frost blues, aurora accents. */
+[data-theme='nord'] {
+  --font-ui: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: Consolas, 'Cascadia Mono', 'JetBrains Mono', 'SF Mono', Menlo, 'Courier New', monospace;
+  --r-s: 8px;
+  --r-m: 12px;
+  --r-l: 14px;
+  --ascii-ramp: '.:;=+*#%@';
+  --bg: #242933;
+  --dot: #242933;
+  --panel: #2e3440;
+  --raised: #3b4252;
+  --hover: #3b4252;
+  --line: #3b4252;
+  --line-soft: #343a46;
+  --text: #d8dee9;
+  --muted: #9aa3b5;
+  --faint: #616e88;
+  --accent: #88c0d0;
+  --accent-ink: #2e3440;
+  --ok: #a3be8c;
+  --warn: #ebcb8b;
+  --err: #bf616a;
+
+  --bar-bg: #242933;
+  --bar-border: #3b4252;
+  --bar-text: #d8dee9;
+  --w-border: #3b4252;
+  --w-shadow: rgba(0, 0, 0, 0.35);
+  --w-title: #242933;
+  --w-title-border: #3b4252;
+  --w-title-text: #d8dee9;
+  --btn-on-bg: #434c5e;
+  --btn-on-fg: #eceff4;
+  --btn-off-bg: #2e3440;
+  --btn-off-fg: #9aa3b5;
+  --btn-border: #3b4252;
+
+  --tok-kw: #81a1c1;
+  --tok-str: #a3be8c;
+  --tok-num: #b48ead;
+  --tok-fn: #88c0d0;
+
+  --term-bg: #242933;
+  --term-text: #d8dee9;
+  --term-cmd: #eceff4;
+  --term-muted: #8f9bb3;
+  --term-err: #bf616a;
+  --term-caret: #d8dee9;
+  --sh-program: #88c0d0;
+  --sh-flag: #81a1c1;
+  --sh-string: #a3be8c;
+  --sh-op: #b48ead;
+  --sh-var: #8fbcbb;
+  --sh-number: #d08770;
+  --sh-comment: #616e88;
+
+  --field-bg: #3b4252;
+  --field-line: #434c5e;
+  --selection: #434c5e;
+  --pop-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --backdrop: rgba(0, 0, 0, 0.5);
+  --shadow: none;
+  --key: none;
+  color-scheme: dark;
+}
+
+/* Cyberpunk: night-purple, hot pink, cyan frames with pink hard shadows, a neon glow on the kitchen. */
+[data-theme='cyberpunk'] {
+  --font-ui: Bahnschrift, 'DIN Alternate', 'Arial Narrow', sans-serif;
+  --font-head: 'OCR A Extended', 'OCR A Std', 'OCR A', Consolas, 'Cascadia Mono', 'JetBrains Mono', 'SF Mono', Menlo, 'Courier New', monospace;
+  --font-mono: Consolas, 'Cascadia Mono', 'JetBrains Mono', 'SF Mono', Menlo, 'Courier New', monospace;
+  --r-s: 0;
+  --r-m: 0;
+  --r-l: 0;
+  --ascii-ramp: '.:/+x%#$@';
+  --bg: #0a0612;
+  --dot: #2a1747;
+  --panel: #110a1f;
+  --raised: #180f2b;
+  --hover: #21143a;
+  --line: #2c1a4a;
+  --line-soft: #1b1030;
+  --text: #ece6ff;
+  --muted: #a99ddc;
+  --faint: #5f5390;
+  --accent: #ff2a6d;
+  --accent-ink: #0a0612;
+  --ok: #05ffa1;
+  --warn: #f9f002;
+  --err: #ff4f5e;
+
+  --bar-bg: rgba(10, 6, 18, 0.92);
+  --bar-border: #3a1f63;
+  --bar-text: #ece6ff;
+  --w-border: #05d9e8;
+  --w-shadow: rgba(255, 42, 109, 0.5);
+  --w-title: linear-gradient(90deg, #2b0f45 0%, #0f2a3d 100%);
+  --w-title-border: #05d9e8;
+  --w-title-text: #05d9e8;
+  --btn-on-bg: #ff2a6d;
+  --btn-on-fg: #0a0612;
+  --btn-off-bg: #180f2b;
+  --btn-off-fg: #a99ddc;
+  --btn-border: #3a1f63;
+
+  --tok-kw: #ff2a6d;
+  --tok-str: #05d9e8;
+  --tok-num: #f9f002;
+  --tok-fn: #c792ff;
+
+  --term-bg: #05010d;
+  --term-text: #d1f7ff;
+  --term-cmd: #05d9e8;
+  --term-muted: #9184c9;
+  --term-err: #ff4f5e;
+  --term-caret: #ff2a6d;
+  --term-lines: repeating-linear-gradient(0deg, rgba(5, 217, 232, 0.05) 0 1px, transparent 1px 3px);
+  --sh-program: #f9f002;
+  --sh-flag: #05d9e8;
+  --sh-string: #ff9ed1;
+  --sh-op: #ff2a6d;
+  --sh-var: #05ffa1;
+  --sh-number: #c792ff;
+  --sh-comment: #6b5fa0;
+
+  --field-bg: #0d0818;
+  --field-line: #3a1f63;
+  --selection: rgba(255, 42, 109, 0.4);
+  --pop-shadow: 0 0 0 1px #05d9e8, 6px 6px 0 rgba(255, 42, 109, 0.5);
+  --backdrop: rgba(5, 1, 13, 0.7);
+  --shadow: 4px 4px 0 var(--w-shadow);
+  --key: 0 2px 0 #3a1f63;
+  color-scheme: dark;
+}
+
+/* Amber CRT: an old amber monitor - one colour, a soft glow, faint scanlines. */
+[data-theme='amber'] {
+  --font-ui: 'Lucida Console', 'Courier New', monospace;
+  --font-head: 'OCR A Extended', 'OCR A Std', 'Lucida Console', monospace;
+  --font-mono: 'Lucida Console', 'Courier New', monospace;
+  --r-s: 0;
+  --r-m: 0;
+  --r-l: 0;
+  --ascii-ramp: '.,:;i1tfLCG08@';
+  --bg: #0b0700;
+  --dot: #2a1c00;
+  --panel: #110b00;
+  --raised: #181000;
+  --hover: #221600;
+  --line: #3a2700;
+  --line-soft: #1e1400;
+  --text: #ffb000;
+  --muted: #c98a00;
+  --faint: #6e4c00;
+  --accent: #ffb000;
+  --accent-ink: #110b00;
+  --ok: #ffd166;
+  --warn: #ff8c1a;
+  --err: #ff5a36;
+
+  --bar-bg: #0b0700;
+  --bar-border: #3a2700;
+  --bar-text: #ffb000;
+  --w-border: #6e4c00;
+  --w-shadow: rgba(255, 176, 0, 0.18);
+  --w-title: #1a1100;
+  --w-title-border: #6e4c00;
+  --w-title-text: #ffb000;
+  --btn-on-bg: #ffb000;
+  --btn-on-fg: #110b00;
+  --btn-off-bg: #181000;
+  --btn-off-fg: #c98a00;
+  --btn-border: #6e4c00;
+
+  --tok-kw: #ffd166;
+  --tok-str: #ff9f1a;
+  --tok-num: #ffe0a3;
+  --tok-fn: #ffc94d;
+
+  --term-bg: #080500;
+  --term-text: #ffb000;
+  --term-cmd: #ffd166;
+  --term-muted: #a06e00;
+  --term-err: #ff5a36;
+  --term-caret: #ffb000;
+  --term-lines: repeating-linear-gradient(0deg, rgba(255, 176, 0, 0.05) 0 1px, transparent 1px 3px);
+  --sh-program: #ffd166;
+  --sh-flag: #ffb000;
+  --sh-string: #ff9f1a;
+  --sh-op: #ffe0a3;
+  --sh-var: #ffcc66;
+  --sh-number: #ffe0a3;
+  --sh-comment: #8a5f00;
+
+  --field-bg: #0d0900;
+  --field-line: #6e4c00;
+  --selection: rgba(255, 176, 0, 0.3);
+  --pop-shadow: 0 0 0 1px #6e4c00, 0 8px 32px rgba(0, 0, 0, 0.7);
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --shadow: 3px 3px 0 var(--w-shadow);
+  --key: none;
+  color-scheme: dark;
+}
+
+/* High contrast: black and white, cyan frames, an orange focus - VS Code's high-contrast dark. */
+[data-theme='contrast'] {
+  --font-ui: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: Consolas, 'Cascadia Mono', 'JetBrains Mono', 'SF Mono', Menlo, 'Courier New', monospace;
+  --r-s: 2px;
+  --r-m: 2px;
+  --r-l: 2px;
+  --t-micro: clamp(13px, 0.9vw, 15px);
+  --t-small: clamp(14px, 0.98vw, 16px);
+  --t-ui: clamp(14.5px, 1.02vw, 17px);
+  --t-body: clamp(15px, 1.06vw, 18px);
+  --t-title: clamp(17px, 1.18vw, 21px);
+  --ascii-ramp: '.:+#@';
+  --bg: #000000;
+  --dot: #000000;
+  --panel: #000000;
+  --raised: #0a0a0a;
+  --hover: #1f1f1f;
+  --line: #6fc3df;
+  --line-soft: #3a3a3a;
+  --text: #ffffff;
+  --muted: #e6e6e6;
+  --faint: #a8a8a8;
+  --accent: #f38518;
+  --accent-ink: #000000;
+  --ok: #3fff7a;
+  --warn: #ffd700;
+  --err: #ff6464;
+
+  --bar-bg: #000000;
+  --bar-border: #6fc3df;
+  --bar-text: #ffffff;
+  --w-border: #6fc3df;
+  --w-shadow: transparent;
+  --w-title: #000000;
+  --w-title-border: #6fc3df;
+  --w-title-text: #ffffff;
+  --btn-on-bg: #ffffff;
+  --btn-on-fg: #000000;
+  --btn-off-bg: #000000;
+  --btn-off-fg: #ffffff;
+  --btn-border: #6fc3df;
+
+  --tok-kw: #569cd6;
+  --tok-str: #ce9178;
+  --tok-num: #b5cea8;
+  --tok-fn: #dcdcaa;
+
+  --term-bg: #000000;
+  --term-text: #ffffff;
+
+  --field-bg: #000000;
+  --field-line: #6fc3df;
+  --selection: #264f78;
+  --pop-shadow: none;
+  --backdrop: rgba(0, 0, 0, 0.7);
+  --shadow: none;
+  --key: none;
+  color-scheme: dark;
+}
