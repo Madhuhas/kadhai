@@ -89,10 +89,35 @@ function licence(a) {
   ];
 }
 
+const REPORT = 'https://github.com/Madhuhas/kadhai/issues/new';
+
+/**
+ * The details for a bug report, as text. Folder paths are left out: they hold the user's name,
+ * and a report is public.
+ */
+function detailsText(a, groups = sections(a)) {
+  return [`Kadhai ${a.version}`, ...groups.filter(([title]) => title !== 'where').flatMap(([title, rows]) => ['', `[${title}]`, ...rows.map(([label, value]) => `${label}: ${value}`)])].join('\n');
+}
+
+/** The bug form on GitHub, with the details and the way Kadhai runs already filled in. */
+export function bugReportUrl(a) {
+  const params = new URLSearchParams({ template: 'bug_report.yml', about: detailsText(a), how: a.mock ? 'npm run demo' : a.desktop ? 'Desktop app (beta)' : 'npm start (browser)' });
+  return `${REPORT}?${params}`;
+}
+
+export async function reportBug() {
+  try {
+    window.open(bugReportUrl(await api.about()), '_blank', 'noopener');
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
 function render(a) {
   const groups = sections(a);
-  const asText = [`Kadhai ${a.version}`, ...groups.flatMap(([title, rows]) => ['', `[${title}]`, ...rows.map(([label, value]) => `${label}: ${value}`)])].join('\n');
-  const copy = h('button', { class: 'btn sm', type: 'button' }, 'Copy details');
+  const asText = detailsText(a, groups);
+  const copy = h('button', { class: 'btn sm', type: 'button', title: 'For a bug report: everything below except the folder paths' }, 'Copy details');
+  const report = h('button', { class: 'btn sm primary', type: 'button', title: 'Open the bug form on GitHub with these details filled in (folder paths left out)', onclick: () => window.open(bugReportUrl(a), '_blank', 'noopener') }, 'Report a bug');
   copy.onclick = async () => {
     try {
       await navigator.clipboard.writeText(asText);
@@ -111,7 +136,7 @@ function render(a) {
       h('dl', { class: 'about-list' }, ...rows.flatMap(([label, value]) => [h('dt', null, label), h('dd', null, String(value))])),
     ]),
     ...licence(a),
-    h('div', { class: 'dialog-actions' }, h('span', { class: 'muted' }, 'No keys or tokens are shown here.'), h('span', { class: 'spacer' }), copy),
+    h('div', { class: 'dialog-actions' }, h('span', { class: 'muted' }, 'No keys or tokens are shown here, and reports leave out folder paths.'), h('span', { class: 'spacer' }), copy, report),
   );
 }
 
@@ -126,6 +151,7 @@ export function initAbout() {
     }
   };
   $('#about-btn').onclick = open;
+  $('#bug-btn').onclick = reportBug;
   $('#about-close').onclick = () => dialog.close();
   dialog.addEventListener('click', (e) => e.target === dialog && dialog.close());
 }
