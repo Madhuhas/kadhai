@@ -6,6 +6,10 @@ updates:
     directory: /
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+    # Express 5 changes routing and error handling: a move to it is planned by hand, not merged from a bot.
+    ignore:
+      - dependency-name: express
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /desktop
     schedule: { interval: weekly }
