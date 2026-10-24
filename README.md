@@ -44,9 +44,8 @@ The **keys** dialog opens by itself. Paste a free key from [Google AI Studio](ht
 | [User guide](docs/USER-GUIDE.md) | Everyone: getting started, the screen, the crew, models and keys, flows, connections, kitchens, themes, safety, troubleshooting |
 | [Privacy](docs/PRIVACY.md) | Everyone: what leaves your computer, when, and to whom (no telemetry) |
 | [Developer guide](docs/DEVELOPERS.md) | Contributors: architecture, the life of a run, where data lives, the rules, recipes, testing |
+| [Security](SECURITY.md) | Everyone: how to report a security problem privately, and what counts as one |
 | [Contributing](CONTRIBUTING.md) | Contributors: the contributor agreement, what not to copy, checks before a pull request |
-| [CLAUDE.md](CLAUDE.md) | The complete list of invariants and the reasons behind them |
-| [theme.md](theme.md) | The visual specification |
 | [desktop/](desktop/README.md) | The desktop app (beta): Kadhai in its own window, and how to build the installer |
 
 ## How it works, in one picture
@@ -89,6 +88,12 @@ The details are in [Safety and privacy](docs/USER-GUIDE.md#15-safety-and-privacy
 - One run at a time per folder; further tasks queue. Open another folder in a second kitchen to work on two projects at once.
 - Only the most recent run can be undone, and undo needs git.
 - Some integrations have only been tested against stand-ins, not real accounts: subscription CLIs as agents, paid providers, the Google connector, and the account-based flow services. The guide says which.
+
+## Feedback
+
+- **Found a bug?** [Open a bug report](https://github.com/Madhuhas/kadhai/issues/new?template=bug_report.yml). Paste the details from **more > about** in Kadhai; they hold no keys.
+- **Have an idea?** [Make a suggestion](https://github.com/Madhuhas/kadhai/issues/new?template=feature_request.yml).
+- **Found a security problem?** Please do not open an issue: [report it privately](https://github.com/Madhuhas/kadhai/security/advisories/new). See [SECURITY.md](SECURITY.md).
 
 ## License
 

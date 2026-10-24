@@ -3,7 +3,7 @@
  * windows are framed, what is behind them, and a little motion. themes.css holds
  * each theme's variables (--font-ui, --font-head, --font-prose, --r-*, --ascii-ramp);
  * this file holds the rules that are not variables. Light and Dark set none of
- * them, so they look exactly as theme.md describes.
+ * them: they are the plain retro desktop.
  *
  * Code, commands, files and the ASCII art stay in --font-mono in every theme:
  * the kitchen's figures only line up in a monospaced face.

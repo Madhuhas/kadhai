@@ -1,6 +1,6 @@
 # Kadhai developer guide
 
-How Kadhai is built, how to work on it, and the rules that keep it safe. Read this before your first change. The complete list of invariants, with the history behind each one, is in [CLAUDE.md](../CLAUDE.md); this guide is the readable overview and points there for detail.
+How Kadhai is built, how to work on it, and the rules that keep it safe. Read this before your first change.
 
 **Contents**
 
@@ -120,8 +120,6 @@ skills/                      built-in skills (markdown)
 test/                        node:test suites and fixtures
 docs/                        this guide and the user guide
 desktop/                     the desktop app (Electron, its own package.json): main.cjs starts server.js in a window
-theme.md                     the visual specification
-CLAUDE.md                    the full set of invariants
 ```
 
 ## 4. Architecture
@@ -171,7 +169,7 @@ Agents are stateless: no chat history is ever sent. A prompt is `memory.md`, the
 - **No framework.** DOM is built with `h(tag, attrs, ...children)` from `util.js`; text is always set with `textContent`. The only `innerHTML` uses are `mdLite`, `highlight` and `renderDiff`, and each escapes its input first (with the shared `escapeHtml`). Keep it that way: file contents and diffs are model-written.
 - **State.** `store.js` holds `state` and a tiny `on/emit` bus. `app.js` turns server events into state changes and topics (`agents`, `run`, `fs`, `flows`...); each panel module renders on the topics it cares about.
 - **Errors.** Every part of the page starts on its own (one that fails is reported, the others still work), and a global handler shows errors nothing else caught, rate-limited, in place of a framework's error boundary. `api.js` turns network failures into a plain "Kadhai is not answering" message and encodes every path segment.
-- **The look** is specified in [theme.md](../theme.md). Colours come only from variables in `themes.css`; each theme's fonts, corners and effects live in `looks.css`. No emoji, images, SVG drawings or icon fonts (the flow canvas's wires and the brand logos in two dialogs are the only exceptions). Everything drawn is ASCII art from `ascii.js`.
+- **The look** is a small retro desktop: a dotted canvas, grey window chrome, one monospaced face, almost no colour (theme Light; the other themes vary fonts, corners and effects). Colours come only from variables in `themes.css`; each theme's fonts, corners and effects live in `looks.css`. No emoji, images, SVG drawings or icon fonts (the flow canvas's wires and the brand logos in two dialogs are the only exceptions). Everything drawn is ASCII art from `ascii.js`.
 - **Animation** goes through the one shared timer in `ascii.js`, which rests while the tab is hidden and draws a single still frame under `prefers-reduced-motion`. The kitchen (`kitchen.js`: the 3D kadhai and the crew's stations) redraws only when what it shows changes.
 - **Agents' colours.** Anything that stands for an agent gets the class `tinted` and `style: tintOf(id)`, and is coloured in CSS through `--agent`.
 - **Accessibility.** Every form field needs a name (a `<label>`, `aria-label` or `ariaLabel` in `h()`); a placeholder is not a name. Every mouse action has a keyboard equivalent. New themes must keep text, muted text, buttons and the terminal at 4.5:1 contrast or better.
@@ -210,7 +208,6 @@ Every secret is encrypted with `vaultFor(file).encrypt` before it is written; `d
 
 ## 8. Rules that must not be broken
 
-A short version; each has a full entry in CLAUDE.md.
 
 1. **All file access goes through `Workspace`.** It enforces the sandbox, protected names (`.git`, `.kadhai`, `node_modules`, in any spelling the disk accepts), link checks, locks and atomic writes. Never call `fs` on workspace paths elsewhere. The preview server checks `staysInside` before serving a file.
 2. **Every write holds the file's lock**, released in a `finally`.
@@ -231,7 +228,7 @@ A short version; each has a full entry in CLAUDE.md.
 
 **Add an HTTP route.** In `apiRouter` in `src/http/app.js`. Wrap async handlers in `wrap()` so errors reach the error middleware (which maps `ELOCKED` to 423 and `err.status` otherwise, and logs any 500). Validate the body; throw errors with a `status` and a sentence the user can act on. Add the call to `public/js/api.js`, encoding path segments with `seg()`.
 
-**Add an event.** Publish it on the bus in core code; handle it in `handlers` in `public/js/app.js`; if editors should see it, in `src/protocols/acpAgent.js`; and list it in CLAUDE.md.
+**Add an event.** Publish it on the bus in core code; handle it in `handlers` in `public/js/app.js`; if editors should see it, in `src/protocols/acpAgent.js`; and list it under *Events* in this guide.
 
 **Add a free provider.** A preset in `PROVIDER_PRESETS` in `src/config.js`. Probe `GET {baseUrl}/models` with a wrong key first: a 401 means the default key check works; a 200 means the list is public, so set `verifyUrl` to an endpoint that does need a key. Take default model ids from the provider's live list, never from memory.
 
@@ -296,5 +293,5 @@ For UI changes, use `npm run demo` and look at the result in both a light and a 
 - `node --check` on every changed file, then `npm test`.
 - For UI changes: look at it in the browser (light and dark theme, 390px wide, no errors in the console).
 - For prompt, parser or orchestrator changes: a few real-model runs.
-- If you added a rule, a file or an event, update CLAUDE.md; if users will notice, update [the user guide](USER-GUIDE.md).
+- If you added a rule, a file or an event, update this guide; if users will notice, update [the user guide](USER-GUIDE.md).
 - Do not commit the user-owned files listed in [Where data lives](#7-where-data-lives).

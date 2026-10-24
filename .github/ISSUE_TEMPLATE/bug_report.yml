@@ -1,0 +1,50 @@
+name: Bug report
+description: Something does not work as it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **A security problem? Do not post it here** - use *Report a vulnerability* on the Security tab instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: I asked the crew to ... and the Taster ...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start with npm start (or the desktop app)
+        2. ...
+        3. See the error
+  - type: textarea
+    id: about
+    attributes:
+      label: About details
+      description: Open **more > about** in Kadhai, press **Copy details** and paste it here. It holds no keys or tokens.
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: how
+    attributes:
+      label: How you run Kadhai
+      options:
+        - npm start (browser)
+        - npm run demo
+        - Desktop app (beta)
+        - MCP server
+        - ACP agent (editor)
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Errors or logs
+      description: The terminal output, the browser console, or an agent's "what it is thinking". Remove anything private first.
+      render: text

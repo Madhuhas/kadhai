@@ -16,7 +16,7 @@ Write your change yourself. Do not paste code, icons, images or text from other 
 
 ## Before you send a change
 
-- Read [CLAUDE.md](CLAUDE.md): it is the complete list of the project's rules (the hard constraints come first), and [docs/DEVELOPERS.md](docs/DEVELOPERS.md) is a gentler introduction.
+- Read [docs/DEVELOPERS.md](docs/DEVELOPERS.md): how Kadhai is built and the rules that keep it safe (the hard constraints come first).
 - Keep the constraints: free to run, one dependency, no build step, local only, no emoji or images in the interface.
 - Run `npm test`. Add a test for new behaviour. The same tests run automatically on every pull request, on Windows and Linux, and must pass before it is merged.
 - For a change to the interface, try it with `npm run demo` and check it at a phone's width.

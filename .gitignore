@@ -18,3 +18,8 @@ flows.local.runs.json
 kitchenkascade.rar
 # the desktop app: what electron-builder makes
 desktop/dist/
+# notes for working on Kadhai with an AI assistant, and internal design notes: kept locally, not published
+CLAUDE.md
+theme.md
+inspo.md
+.claude/

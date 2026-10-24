@@ -3,7 +3,7 @@ import { h } from './util.js';
 /**
  * Brand logos, used in three places only: the keys dialog, the connections
  * dialog and the apps and services on the flows canvas, where telling one service from another at a glance matters. The
- * rest of the app has no pictures (see theme.md).
+ * rest of the app has no pictures.
  *
  * The files in public/logos/ come from Simple Icons (CC0), one path each, and
  * are painted as a mask in the text colour, so they follow the theme and stay

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem (privately)
+    url: https://github.com/Madhuhas/kadhai/security/advisories/new
+    about: Please do not post security problems as issues. Report them privately here.
+  - name: User guide
+    url: https://github.com/Madhuhas/kadhai/blob/main/docs/USER-GUIDE.md
+    about: Setup, every part of the screen, and troubleshooting.
