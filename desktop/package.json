@@ -1,7 +1,7 @@
 {
   "name": "kadhai-desktop",
   "productName": "Kadhai Beta",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "description": "Kadhai as a desktop app: the same local server, in a window of its own.",
   "private": true,
   "main": "main.cjs",
@@ -13,7 +13,7 @@
     "build:dir": "electron-builder --win --dir"
   },
   "devDependencies": {
-    "electron": "44.7.0",
+    "electron": "44.9.3",
     "electron-builder": "26.17.0"
   },
   "build": {
@@ -21,18 +21,46 @@
     "productName": "Kadhai Beta",
     "executableName": "Kadhai",
     "copyright": "Copyright (C) 2026 Kotini Sai Madhuhas",
-    "directories": { "output": "dist", "buildResources": "build" },
-    "files": ["main.cjs", "package.json"],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.cjs",
+      "package.json"
+    ],
     "extraResources": [
       {
         "from": "..",
         "to": "kadhai",
-        "filter": ["server.js", "package.json", "LICENSE", "src/**", "public/**", "bin/**", "skills/**"]
+        "filter": [
+          "server.js",
+          "package.json",
+          "LICENSE",
+          "src/**",
+          "public/**",
+          "bin/**",
+          "skills/**"
+        ]
       },
-      { "from": "../node_modules", "to": "kadhai/node_modules", "filter": ["**/*"] },
-      { "from": "build/icon.png", "to": "icon.png" }
+      {
+        "from": "../node_modules",
+        "to": "kadhai/node_modules",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "build/icon.png",
+        "to": "icon.png"
+      }
     ],
-    "win": { "target": ["nsis"], "icon": "build/icon.png" },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
