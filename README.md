@@ -55,6 +55,7 @@ The **keys** dialog opens by itself. Paste a free key from [Google AI Studio](ht
 | [User guide](docs/USER-GUIDE.md) | Everyone: getting started, the screen, the crew, models and keys, flows, connections, kitchens, themes, safety, troubleshooting |
 | [Privacy](docs/PRIVACY.md) | Everyone: what leaves your computer, when, and to whom (no telemetry) |
 | [Developer guide](docs/DEVELOPERS.md) | Contributors: architecture, the life of a run, where data lives, the rules, recipes, testing |
+| [Code signing policy](docs/CODE-SIGNING.md) | Everyone: how the Windows installer is built and signed, and who approves each release |
 | [Security](SECURITY.md) | Everyone: how to report a security problem privately, and what counts as one |
 | [Contributing](CONTRIBUTING.md) | Contributors: ways to help, talking first, what a change must keep, setup, testing, pull requests, the contributor agreement |
 | [desktop/](desktop/README.md) | The desktop app (beta): Kadhai in its own window, and how to build the installer |
@@ -114,6 +115,10 @@ Copyright (C) 2026 Kotini Sai Madhuhas
 Kadhai is free software: you can redistribute it and/or modify it under the terms of the [GNU Affero General Public License](LICENSE) as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the license for details.
 
 In plain words: use it, change it and share it freely, on your own computer or anyone else's. If you run a changed version of Kadhai as a service other people use over a network, you must offer them the source code of your version under the same license. Contributions are welcome: contributors sign a short [agreement](CLA.md) once, keep their copyright, and are promised their work will always stay open source (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+
+## Code signing policy
+
+The Windows installer is built from this repository by GitHub Actions, and each signed release is approved by hand by the maintainer. Signing through the SignPath Foundation has been applied for; until it is in place the installers are unsigned. Signed releases: Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/). Team roles and the details are in the [code signing policy](docs/CODE-SIGNING.md).
 
 ## Credits
 
