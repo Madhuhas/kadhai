@@ -13,7 +13,7 @@ export class DispatchError extends Error {
 const today = () => new Date().toLocaleDateString('en-CA'); // local YYYY-MM-DD
 const freshDay = () => ({ date: today(), calls: 0, promptTokens: 0, completionTokens: 0, rateLimits: 0 });
 
-const COOLDOWN = { rateLimitDefault: 60000, rateLimitMin: 3000, rateLimitMax: 600000, transient: 15000 };
+const COOLDOWN = { rateLimitDefault: 60000, rateLimitMin: 3000, rateLimitMax: 600000, transient: 15000, timeout: 600000, noCredit: 3600000 };
 
 /**
  * Universal failover dispatcher.
@@ -190,6 +190,14 @@ export class Dispatcher {
       case 'unavailable':
         // A subscription CLI that is not installed or not signed in: off until the user fixes it.
         route.disabled = err.message;
+        break;
+      case 'no_credit':
+        // Seen: Hugging Face out of credits was tried again a minute later in the same run.
+        route.cooldownUntil = Date.now() + COOLDOWN.noCredit;
+        break;
+      case 'timeout':
+        // A route that kept the whole crew waiting should not do so again on the next call.
+        route.cooldownUntil = Date.now() + COOLDOWN.timeout;
         break;
       case 'too_large':
       case 'bad_request':

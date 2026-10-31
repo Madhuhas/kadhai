@@ -268,6 +268,9 @@ test('providers: a 400 is classified by what it says, since providers disagree o
   assert.equal(classify(401), 'auth');
   assert.equal(classify(404), 'not_found');
   assert.equal(classify(503), 'server');
+  // Hugging Face out of credits was tried again a minute later in the same run: it rests for an hour now.
+  assert.equal(classify(402, '{"error":"You have no remaining credits."}'), 'no_credit');
+  assert.equal(classify(410), 'not_found', 'a retired model is gone, not busy');
   assert.equal(classify(400, '{"error":{"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}'), 'auth');
   assert.equal(classify(400, '{"error":{"message":"The model `llama3-70b` has been decommissioned","code":"model_decommissioned"}}'), 'not_found');
   assert.equal(classify(400, "This model's maximum context length is 8192 tokens. Please reduce the length of the messages."), 'too_large');
