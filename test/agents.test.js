@@ -69,7 +69,7 @@ test('high flame: a CLI agent does the step in a copy; its changes come back thr
   const text = thoughts();
   assert.match(text, /\[agent\] Claude Code works on a copy of the folder, edits only/);
   assert.match(text, /\[Write\] hello\.js/);
-  assert.match(text, /--tools Read,Edit,Write,Glob,Grep/);
+  assert.match(text, /--tools Read,Edit,Write,Glob,Grep,WebSearch --permission-mode acceptEdits --allowedTools WebSearch/);
   assert.doesNotMatch(text, /Bash/);
   assert.match(text, /--setting-sources user --strict-mcp-config/);
   // Counted like any call, and undoable like any run.
@@ -84,9 +84,12 @@ test('the shell is allowed only when the operator asked for it in the dashboard'
   t.after(() => engine.close());
   await engine.orchestrator.start('say hello', { source: 'flow', shell: true }).done;
   assert.doesNotMatch(thoughts(), /Bash/, 'a flow never gets it');
+  // Nor web search: the copy holds the folder's secrets, and a flow's text comes from outside.
+  assert.match(thoughts(), /--tools Read,Edit,Write,Glob,Grep --permission-mode acceptEdits --setting-sources/);
   await engine.orchestrator.start('say hello again', { source: 'ui', shell: true }).done;
   assert.match(thoughts(), /commands allowed/);
-  assert.match(thoughts(), /--tools Bash,Read,Edit,Write,Glob,Grep --permission-mode acceptEdits --allowedTools Bash/);
+  assert.match(thoughts(), /--tools Bash,Read,Edit,Write,Glob,Grep,WebSearch --permission-mode acceptEdits --allowedTools Bash,WebSearch/);
+  assert.doesNotMatch(thoughts(), /WebFetch/, 'never a tool that fetches any address');
 });
 
 test('low flame never starts an agent: the CLI stays a model', async (t) => {

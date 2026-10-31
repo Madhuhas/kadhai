@@ -434,7 +434,7 @@ export class Crew {
    * of the folder). Returns null when no CLI can act in this mode, or when the chosen one could not
    * be used - the caller then falls back to an ordinary call, so failover still holds.
    */
-  async act(id, { system, user, dir, shell = false, task = '', signal }) {
+  async act(id, { system, user, dir, shell = false, web = false, task = '', signal }) {
     const agent = this.get(id);
     await this.#waitWhilePaused(agent, signal);
     const prefer = agent.model && agent.model !== 'light' && agent.model !== 'best' ? agent.model : undefined;
@@ -458,6 +458,7 @@ export class Crew {
         user: user + noteBlock,
         dir,
         shell,
+        web,
         signal,
         timeoutMs: limits.agentTimeoutMs ?? 15 * 60000,
         maxTurns: limits.agentTurns ?? 30,

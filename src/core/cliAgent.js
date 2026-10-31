@@ -26,15 +26,18 @@ export const AGENT_MODES = {
     editsOnly: true,
     input: 'split',
     checked: 'docs',
-    args: ({ systemFile, model, shell, maxTurns }) => [
+    args: ({ systemFile, model, shell, web, maxTurns }) => [
       '-p',
       '--output-format', 'stream-json',
       '--verbose', // stream-json in print mode wants it
       // Its own system prompt stays (it carries the tool guidance); ours is added after it.
       '--append-system-prompt-file', systemFile,
-      '--tools', shell ? 'Bash,Read,Edit,Write,Glob,Grep' : 'Read,Edit,Write,Glob,Grep',
+      // Web search only, and only for a task the operator typed: the copy holds the folder's secrets (.env
+      // included), so a tool that fetches any address would let a page or an issue it read send them out.
+      // WebSearch asks for permission, and a -p run denies anything that asks, so it is allowed by name too.
+      '--tools', [...(shell ? ['Bash'] : []), 'Read', 'Edit', 'Write', 'Glob', 'Grep', ...(web ? ['WebSearch'] : [])].join(','),
       '--permission-mode', 'acceptEdits',
-      ...(shell ? ['--allowedTools', 'Bash'] : []),
+      ...(shell || web ? ['--allowedTools', [...(shell ? ['Bash'] : []), ...(web ? ['WebSearch'] : [])].join(',')] : []),
       // Nothing the folder brought may run: no project settings (hooks), no project MCP servers.
       '--setting-sources', 'user',
       '--strict-mcp-config',
@@ -125,7 +128,7 @@ export const canAct = (provider, shell) => Boolean(AGENT_MODES[provider] && (she
  * caller can fall back to the ordinary cooks.
  *   onEvent({ kind: 'text' | 'tool', ... })  for the thought stream
  */
-export async function runCliAgent(route, { system, user, dir, shell = false, signal, timeoutMs, maxTurns = 30, onEvent } = {}) {
+export async function runCliAgent(route, { system, user, dir, shell = false, web = false, signal, timeoutMs, maxTurns = 30, onEvent } = {}) {
   const agent = CLI_AGENTS[route.provider];
   const mode = AGENT_MODES[route.provider];
   if (!agent || !mode) throw new ProviderError(`${route.label} cannot work as an agent`, { kind: 'unavailable' });
@@ -160,7 +163,7 @@ export async function runCliAgent(route, { system, user, dir, shell = false, sig
   };
 
   const { code, stderr, spawnError, timedOut } = await new Promise((resolve) => {
-    const child = launch(route.command ?? agent.command, mode.args({ systemFile, model, shell, maxTurns }), { cwd: dir, env: childEnv(process.env), stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = launch(route.command ?? agent.command, mode.args({ systemFile, model, shell, web, maxTurns }), { cwd: dir, env: childEnv(process.env), stdio: ['pipe', 'pipe', 'pipe'] });
     let pending = '';
     let err = '';
     let late = false;
