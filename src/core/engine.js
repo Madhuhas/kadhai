@@ -21,6 +21,7 @@ import { log } from './util.js';
 import { Repo } from './git.js';
 import { GoogleConnector, Toolbox } from './connectors/google.js';
 import { describeConnection } from './connectors/catalog.js';
+import { LOOKUP_ABOUT, LookupConnector } from './connectors/lookup.js';
 import { loadAgentAccess, loadAgentSettings, loadCustomAgents, saveCustomAgents } from './customAgents.js';
 import { MAX_OWN_SKILLS, cleanSkill, deleteSkill, loadSkills, slug, writeSkill } from './skills.js';
 import { Triggers } from './triggers.js';
@@ -156,7 +157,7 @@ export async function createEngine(overrides = {}) {
     fetch: overrides.fetch,
   });
   await google.init();
-  const toolbox = new Toolbox([mcp, google], describeConnection);
+  const toolbox = new Toolbox([mcp, google, new LookupConnector({ fetch: overrides.fetch })], (id) => (id === 'lookup' ? LOOKUP_ABOUT : describeConnection(id)));
   // What was done in this folder before, and what was learned from it.
   const journal = new Journal({ dir: path.join(config.workspaceDir, '.kadhai'), enabled: config.journal, bus, now: overrides.now, limits: config.limits });
   await journal.init();

@@ -10,6 +10,7 @@ import { spawnSpec } from '../src/core/runner.js';
 import { createEngine } from '../src/core/engine.js';
 import { CATALOG, CATEGORIES, checkFields, publicCatalog, specFor } from '../src/core/connectors/catalog.js';
 import { Toolbox } from '../src/core/connectors/google.js';
+import { LOOKUP_ABOUT, LookupConnector } from '../src/core/connectors/lookup.js';
 import { managerSystem } from '../src/core/prompts.js';
 import { ProviderError } from '../src/core/providers.js';
 import { loadSkills } from '../src/core/skills.js';
@@ -884,6 +885,26 @@ test('connector catalog: a token is checked with the service before anything sta
   assert.ok(CATALOG.filter((e) => e.verify).every((e) => e.type === 'key'), 'only entries that take a key are checked');
 });
 
+test('built-in look-ups: keyless read-only services as one connection, through the injected fetch', async () => {
+  const asked = [];
+  const fetch = async (url) => {
+    asked.push(String(url));
+    const body = String(url).includes('geocoding')
+      ? { results: [{ name: 'Kansas City', admin1: 'Missouri', country: 'United States', latitude: 39.1, longitude: -94.6 }] }
+      : { current: { temperature_2m: 18, apparent_temperature: 18, relative_humidity_2m: 87, weather_code: 61, wind_speed_10m: 8, precipitation: 1, time: 'now' }, daily: { time: [], weather_code: [], temperature_2m_max: [], temperature_2m_min: [] } };
+    return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  const lookup = new LookupConnector({ fetch });
+  const names = lookup.tools().map((x) => x.name);
+  assert.ok(names.includes('lookup__weather') && names.every((n) => n.startsWith('lookup__')));
+  const box = new Toolbox([lookup], (id) => (id === 'lookup' ? LOOKUP_ABOUT : null));
+  assert.deepEqual(box.groups().map((g) => g.id), ['lookup']);
+  const out = JSON.parse(await box.call('lookup__weather', { place: 'Kansas City' }));
+  assert.equal(out.now.temperature, 18);
+  assert.ok(asked.every((u) => u.startsWith('https://')), 'outward only');
+  await assert.rejects(lookup.call('lookup__send_mail', {}), /unknown tool/);
+});
+
 test('tools are scoped: the Chef sees one line per connection, a cook only the tools of its sub-task', async (t) => {
   const tool = (name) => ({ name, description: `does ${name}`, params: ['q'] });
   const source = { tools: () => [tool('context7__resolve'), tool('context7__docs'), tool('big__one'), tool('big__two'), tool('google__drive_search')] };
@@ -901,6 +922,9 @@ test('tools are scoped: the Chef sees one line per connection, a cook only the t
   assert.match(system, /- context7: library docs/);
   assert.ok(!system.includes('context7__resolve'), 'tool descriptions are not in the plan prompt');
   assert.ok(!managerSystem(6).includes('"tools"'), 'no connections, no mention of them');
+  // A real model answered "I don't have real-time data" with a web search connected.
+  assert.match(system, /Never answer that you have no internet/);
+  assert.doesNotMatch(managerSystem(6), /no internet/);
 
   // End to end: the plan names a connection for one sub-task only.
   const dir = await tmpDir('scope');
@@ -926,6 +950,170 @@ test('tools are scoped: the Chef sees one line per connection, a cook only the t
   assert.equal(prompts.length, 2);
   assert.equal(withTools.length, 1, 'only the sub-task that asked for context7 was shown its tools');
   assert.ok(!prompts.some((p) => p.includes('big__one') || p.includes('google__drive_search')), 'connections nobody asked for cost nothing');
+});
+
+test('the Chef may ask before planning: only someone in the dashboard, only once, and nothing is cooked', async (t) => {
+  // The user asked for it: "build a workout plan" was built with no questions, where a person would have asked.
+  const dir = await tmpDir('ask');
+  const systems = [];
+  let cooked = 0;
+  const completion = async (_route, req, { role }) => {
+    if (role === 'manager') {
+      systems.push(req.messages[0].content);
+      return reply(JSON.stringify({
+        objective: 'workout plan page',
+        reply: 'Happy to. Two quick questions:',
+        ask: [
+          { question: 'Your goal?', options: ['Lose weight', 'Build muscle', 'Lose weight', 'x'.repeat(200)] },
+          { question: 'Only one option', options: ['yes'] },
+          { question: 'Days a week?', options: ['3', '5'] },
+          { question: 'four', options: ['a', 'b'] },
+          { question: 'five', options: ['a', 'b'] },
+        ],
+        subtasks: [{ title: 'page', instructions: 'write plan.html', files: ['plan.html'], level: 'simple' }],
+      }));
+    }
+    cooked += 1;
+    return reply('<<<FILE plan.html>>>\nplan\n<<<END>>>\nSUMMARY: wrote it');
+  };
+  const engine = await createEngine({ workspaceDir: dir, providers: FAKE_PROVIDER, completion, mcp: false, limits: { execMode: 'off' } });
+  t.after(() => engine.close());
+
+  const asked = await engine.orchestrator.start('build a workout plan web page').done;
+  assert.equal(asked.ok, true);
+  assert.equal(cooked, 0, 'questions replace the plan');
+  assert.deepEqual(asked.ask.map((q) => q.question), ['Your goal?', 'Days a week?', 'four'], 'at most three, each with two choices or more');
+  assert.equal(asked.ask[0].options.length, 3, 'duplicates dropped');
+  assert.ok(asked.ask[0].options[2].length <= 80);
+  const message = engine.orchestrator.chat.at(-1);
+  assert.equal(message.request, 'build a workout plan web page');
+  assert.equal(message.ask.length, 3);
+  assert.match(systems[0], /Asking first/);
+
+  // The answers come back as a new task that may not be asked about again: it is cooked.
+  const built = await engine.orchestrator.start('build a workout plan web page\n\nMy answers:\n- Your goal? Lose weight', { answered: true }).done;
+  assert.equal(built.ask, undefined);
+  assert.equal(cooked > 0, true);
+  assert.doesNotMatch(systems.at(-1), /Asking first/);
+
+  // Nobody is there to answer a flow, a trigger or an editor: no questions, the plan goes ahead.
+  const before = cooked;
+  const flow = await engine.orchestrator.start('build a workout plan web page', { source: 'flow' }).done;
+  assert.equal(flow.ask, undefined);
+  assert.ok(cooked > before);
+});
+
+test('a check that cannot work is not run, and is never reported as the code failing', async (t) => {
+  // Seen: "npm test --silent" with no test script failed silently; the Taster invented causes and the Fixer "fixed" right code.
+  const dir = await tmpDir('no-script');
+  await fs.writeFile(path.join(dir, 'package.json'), '{ "type": "module" }\n');
+  const reviews = [];
+  const completion = async (_route, req, { role }) => {
+    if (role === 'manager') return reply(JSON.stringify({ objective: 'fix', subtasks: [{ title: 'fix', instructions: 'fix a.js', files: ['a.js'], level: 'simple' }], verify: 'npm test --silent' }));
+    if (role === 'reviewer') {
+      reviews.push(req.messages.at(-1).content);
+      return reply(JSON.stringify({ verdict: 'approve', issues: [], summary: 'fine' }));
+    }
+    return reply('<<<FILE a.js>>>\nexport const a = 1;\n<<<END>>>\nSUMMARY: fixed');
+  };
+  const engine = await createEngine({ workspaceDir: dir, providers: FAKE_PROVIDER, completion, mcp: false, limits: { execMode: 'auto' } });
+  t.after(() => engine.close());
+  const ran = [];
+  const real = engine.runner.run.bind(engine.runner);
+  engine.runner.run = (command, opts) => (ran.push(command), real(command, opts));
+  const result = await engine.orchestrator.start('fix a.js').done;
+  assert.equal(result.ok, true, result.reply);
+  assert.deepEqual(ran, [], 'npm was never started');
+  assert.match(result.reply, /not run: package.json has no "test" script/);
+  assert.doesNotMatch(result.reply, /FAILED/);
+});
+
+test('an inline check that crashes in its own code proves nothing; one whose assertion fails still fails', async (t) => {
+  // Seen: execSync('node primes.js', 'utf8').trim() - a Buffer has no trim - and three agents "fixed" correct code five times.
+  const runWith = async (verify) => {
+    const dir = await tmpDir('check-crash');
+    const completion = async (_route, _req, { role }) => {
+      if (role === 'manager') return reply(JSON.stringify({ objective: 'primes', subtasks: [{ title: 'write', instructions: 'write p.js', files: ['p.js'], level: 'simple' }], verify }));
+      if (role === 'reviewer') return reply(JSON.stringify({ verdict: 'approve', issues: [], summary: 'fine' }));
+      return reply('<<<FILE p.js>>>\nconsole.log("2 3 5");\n<<<END>>>\nSUMMARY: wrote it');
+    };
+    const engine = await createEngine({ workspaceDir: dir, providers: FAKE_PROVIDER, completion, mcp: false, limits: { execMode: 'auto' } });
+    t.after(() => engine.close());
+    return engine.orchestrator.start('primes').done;
+  };
+  const crashed = await runWith(`node -e "const out = require('child_process').execSync('node p.js', 'utf8').trim(); if (out !== '2 3 5') process.exit(1)"`);
+  assert.equal(crashed.ok, true, crashed.reply);
+  assert.match(crashed.reply, /not run: the check command itself crashed \(TypeError/);
+
+  const wrong = await runWith(`node -e "require('assert').equal(require('child_process').execSync('node p.js', { encoding: 'utf8' }).trim(), '2 3 5 7')"`);
+  assert.equal(wrong.ok, false, 'a real mismatch is a real failure');
+  assert.match(wrong.reply, /FAILED/);
+});
+
+test('the Chef plans a new request with that request as the objective, not the last run\'s', async (t) => {
+  // Seen: "how is the weather in kc" planned as Chennai, because memory.md still said "weather in Chennai".
+  const dir = await tmpDir('fresh-objective');
+  const seen = [];
+  const completion = async (_route, req, { role }) => {
+    if (role === 'manager') {
+      seen.push(req.messages.at(-1).content);
+      return reply(JSON.stringify({ objective: seen.length === 1 ? 'Provide current weather in Chennai' : 'x', reply: 'ok', subtasks: [] }));
+    }
+    return reply('{}');
+  };
+  const engine = await createEngine({ workspaceDir: dir, providers: FAKE_PROVIDER, completion, mcp: false, limits: { execMode: 'off' } });
+  t.after(() => engine.close());
+  await engine.orchestrator.start('how is the weather in chennai').done;
+  await engine.orchestrator.start('hey how is the weather in kc').done;
+  assert.match(seen[1], /## Current Objective\nNew request: hey how is the weather in kc/);
+  assert.doesNotMatch(seen[1], /Current Objective\n[^\n]*Chennai/);
+});
+
+test('a look-up step must look: an answer from memory is sent back, and never passes', async (t) => {
+  // Seen with a real model: "Kansas City, MO: 42°F, partly cloudy" without calling the weather tool (it was 18°C, raining).
+  const run = async (cookAnswers) => {
+    const dir = await tmpDir('must-look');
+    const prompts = [];
+    const completion = async (_route, req, { role }) => {
+      if (role === 'manager') return reply(JSON.stringify({ objective: 'weather', subtasks: [{ title: 'Get the weather', instructions: 'look it up', files: [], level: 'simple', tools: ['lookup'] }] }));
+      prompts.push(req.messages.at(-1).content);
+      return reply(cookAnswers(prompts.length));
+    };
+    const engine = await createEngine({ workspaceDir: dir, providers: FAKE_PROVIDER, completion, mcp: false, limits: { execMode: 'off', maxToolRounds: 3 } });
+    t.after(() => engine.close());
+    const lookup = { tools: () => [{ name: 'lookup__weather', description: 'weather', params: ['place'] }], call: async () => '{"now":{"temperature":18,"sky":"rain"}}' };
+    engine.orchestrator.mcp = new Toolbox([lookup]);
+    return { result: await engine.orchestrator.start('how is the weather in kc').done, prompts };
+  };
+
+  const guessed = 'SUMMARY: Kansas City, MO: 42°F, partly cloudy.';
+  const corrected = await run((n) => (n === 1 ? guessed : n === 2 ? '<<<TOOL lookup__weather>>>{"place":"Kansas City"}<<<END>>>' : 'SUMMARY: Kansas City: 18°C and raining.'));
+  assert.equal(corrected.result.ok, true, corrected.result.reply);
+  assert.match(corrected.prompts[1], /you answered without looking anything up/);
+  assert.equal(corrected.result.reply, 'Kansas City: 18°C and raining.', 'the answer is the reply, not a work report');
+
+  const stubborn = await run(() => guessed);
+  assert.equal(stubborn.result.ok, false);
+  assert.doesNotMatch(stubborn.result.reply, /^Kansas City, MO: 42°F, partly cloudy\.$/, 'a guess is never handed over as the answer');
+});
+
+test('a look-up step whose rounds end on an unanswered look-up has not answered', async (t) => {
+  // Seen with a real model: four refused web searches, and the step was ticked done with "searched for the weather".
+  const dir = await tmpDir('lookup-rounds');
+  let n = 0;
+  const completion = async (_route, _req, { role }) => {
+    if (role === 'manager') return reply(JSON.stringify({ objective: 'weather', subtasks: [{ title: 'Get the weather', instructions: 'look it up', files: [], level: 'simple', tools: ['web'] }] }));
+    if (role === 'reviewer') return reply(JSON.stringify({ verdict: 'approve', issues: [], summary: 'fine' }));
+    n += 1;
+    return reply(`<<<TOOL web__search>>>{"query":"weather kc ${n}"}<<<END>>>\nSUMMARY: searched for the weather`);
+  };
+  const engine = await createEngine({ workspaceDir: dir, providers: FAKE_PROVIDER, completion, mcp: false, limits: { execMode: 'off', maxToolRounds: 2 } });
+  t.after(() => engine.close());
+  const web = { tools: () => [{ name: 'web__search', description: 'search', params: ['query'] }], call: async () => { throw new Error('Rate limit exceeded'); } };
+  engine.orchestrator.mcp = new Toolbox([web]);
+  const result = await engine.orchestrator.start('how is the weather in kc').done;
+  assert.equal(result.ok, false);
+  assert.match(result.reply, /ran out of rounds before its last look-up was answered/);
 });
 
 test('attachments: files sent with a task are shown to the Chef up front and named in the chat', async (t) => {

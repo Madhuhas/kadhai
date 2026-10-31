@@ -384,6 +384,15 @@ textarea:focus, input[type='text']:focus, input[type='password']:focus {
 .msg.system { align-self: center; font: var(--t-micro) var(--font-mono); color: var(--muted); text-align: center; }
 .run-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s3); }
 
+/* The Chef's questions before it plans: one click each. */
+.ask-card { display: grid; gap: var(--s3); margin-top: var(--s3); }
+.ask-q { display: grid; gap: var(--s2); min-width: 0; margin: 0; padding: var(--s2) var(--s3) var(--s3); border: 1px solid var(--line); border-radius: var(--r-m); }
+.ask-q legend { padding: 0 var(--s1); font-weight: 600; }
+.ask-options { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.ask-options .chip { height: auto; min-height: 24px; white-space: normal; text-align: left; }
+.ask-own { width: 100%; min-width: 0; }
+.ask-card.done { opacity: 0.6; }
+
 /* Command cards are little terminals. */
 .msg.exec { border: 1px solid transparent; border-radius: var(--r-m); background: var(--term-lines), var(--term-bg); color: var(--term-text); overflow: hidden; }
 .msg.exec.wait { border-color: var(--term-text); }

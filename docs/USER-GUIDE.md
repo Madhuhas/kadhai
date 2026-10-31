@@ -99,7 +99,7 @@ To build the installer yourself, see `desktop/README.md`.
 ### Your first real task
 
 1. In the chat on the right, type what you want, for example: *Make a to-do list web page where I can add and tick off items. Keep it in one HTML file.*
-2. Press **Enter**. The Chef writes a plan; you see it as an order ticket in the middle of the screen, with each step and the cook who has it.
+2. Press **Enter**. If the request leaves something open that would change what gets built (*build me a workout plan*: for whom, what kind, how often), the Chef first asks up to three short questions, each with choices you pick with one click, or type your own answer. Press **Build it**, or **Skip, you choose** to let the Chef decide. It asks only once per request, and only in the dashboard: flows, triggers and editors are never held up by a question. Then the Chef writes a plan; you see it as an order ticket in the middle of the screen, with each step and the cook who has it.
 3. If a cook wants to run a command (for example to check its code), a card appears in the chat with the exact command. Press **Run** to allow it or **Deny** to refuse. Nothing runs without your OK unless you change that.
 4. When the run ends, the Chef's report appears in the chat with three buttons: **View changes** (every file that changed, line by line), **Open preview** (the page, in Kadhai's browser tab) and **Undo this run**.
 
@@ -304,7 +304,7 @@ The **flame** in the taskbar sets how much the crew may use per call. Any key wo
 
 Every number is still a hard limit on both flames.
 
-**CLI agents (high flame).** A step can be done by a subscription CLI working with its own tools, on a temporary copy of your folder. Each changed file comes back into your folder through Kadhai, under that cook's name, so it can be reviewed and undone like any other change. By default only Claude Code acts this way, with its shell switched off. Tick **agents run commands** beside the chat box to let CLI agents run their own commands for one task; those commands do not wait for your approval and are not sandboxed, so use it only when you trust the task.
+**CLI agents (high flame).** A step can be done by a subscription CLI working with its own tools, on a temporary copy of your folder. Each changed file comes back into your folder through Kadhai, under that cook's name, so it can be reviewed and undone like any other change. By default only Claude Code acts this way, with its shell switched off. On tasks you type in the chat it may also search the web; it is never given a tool that fetches any address, because the copy of your folder holds its secrets (a `.env`, for example) and a page or an issue it read could otherwise have it send them somewhere. Tick **agents run commands** beside the chat box to let CLI agents run their own commands for one task; those commands do not wait for your approval and are not sandboxed, so use it only when you trust the task.
 
 ---
 
@@ -421,6 +421,8 @@ Every step can be switched off, retried up to three times, or told to carry on a
 ### Connections
 
 **connect** opens a catalog of about fifty services the crew can use while it works: web search, a browser, GitHub, Notion, Linear, Slack, databases and more. Press **Connect** on a card. Some run on this computer, some need no account, some ask for a key, some open the service's sign-in page.
+
+One connection is always there without connecting anything: **lookup**, free and read-only, for the current weather and a 3-day forecast, Wikipedia articles, currency conversion and Hacker News stories. Ask *how is the weather in Kansas City?* and the Chef sends a cook to look it up instead of guessing.
 
 - The Chef tells each step which connections it may use (at most three on low flame), so a connection nobody needs costs almost nothing.
 - Anything a cook reads through a connection becomes part of its prompt and is sent to the AI provider in use.

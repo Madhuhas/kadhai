@@ -252,7 +252,7 @@ export function apiRouter(engine) {
   api.get('/memory', wrap(async (_req, res) => res.json({ content: await memory.read() })));
 
   api.post('/task', (req, res) => {
-    const run = orchestrator.start(req.body?.text, { source: 'ui', attachments: req.body?.attachments, shell: req.body?.shell === true });
+    const run = orchestrator.start(req.body?.text, { source: 'ui', attachments: req.body?.attachments, shell: req.body?.shell === true, answered: req.body?.answered === true });
     res.status(202).json({ runId: run.id, queued: run.queued });
   });
   api.delete('/queue/:id', (req, res) => res.json({ removed: orchestrator.cancel(req.params.id) }));

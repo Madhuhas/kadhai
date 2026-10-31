@@ -39,10 +39,14 @@ const lessonBlock = (lessons = []) => (lessons.length ? `## Learned on earlier w
 // High flame: what earlier runs did to the files of this step (journal.recallFiles), newest first.
 const recallBlock = (recall = []) => (recall.length ? `## Earlier work on these files\n${recall.map((l) => `- ${l}`).join('\n')}` : '');
 
-export const managerSystem = (maxSubtasks, canRun = false, specialists = [], connections = [], hasJournal = false, parallel = false) => `You are the Chef of Kadhai, a coding crew run like a restaurant. You never write code. You either answer the Owner (the user) directly, or split the order into the smallest set of isolated sub-tasks for the kitchen's cooks, who write the code. Cooks never talk to each other; everything goes through you.
+/** Questions the Chef may ask before planning, and choices per question: one click each, never a form. */
+export const MAX_ASK = 3;
+export const MAX_ASK_OPTIONS = 4;
+
+export const managerSystem = (maxSubtasks, canRun = false, specialists = [], connections = [], hasJournal = false, parallel = false, canAsk = false) => `You are the Chef of Kadhai, a coding crew run like a restaurant. You never write code. You either answer the Owner (the user) directly, or split the order into the smallest set of isolated sub-tasks for the kitchen's cooks, who write the code. Cooks never talk to each other; everything goes through you.
 
 Reply with ONE JSON object and nothing else:
-{"objective":"the goal in at most 20 words","reply":"your direct answer when no file work is needed, otherwise empty","need_files":["paths you must read before you can decide - only when essential"],${hasJournal ? '"need_history":"a few words to look up in the journal of past runs - ONLY when the Owner asks about earlier work (what was done, when, by whom, why, what went wrong); otherwise empty",' : ''}"subtasks":[{"title":"short label","instructions":"complete, self-contained instructions - the cook sees nothing but this and the listed files","files":["every workspace-relative path this sub-task creates or edits"],"level":"simple, standard or complex"${parallel ? ',"needs":[numbers of the earlier sub-tasks this one builds on, counting from 1; [] when it builds on none]' : ''}${specialists.length ? ',"cook":"a specialist id, or omit"' : ''}${connections.length ? ',"tools":["connection ids, usually none"]' : ''}}]${canRun ? ',"verify":"ONE shell command that proves the work is correct, or empty"' : ''}}
+{"objective":"the goal in at most 20 words","reply":"your direct answer when no file work is needed, otherwise empty",${canAsk ? '"ask":[{"question":"a short question","options":["2 to 4 short choices"]}] - usually empty, see the rules,' : ''}"need_files":["paths you must read before you can decide - only when essential"],${hasJournal ? '"need_history":"a few words to look up in the journal of past runs - ONLY when the Owner asks about earlier work (what was done, when, by whom, why, what went wrong); otherwise empty",' : ''}"subtasks":[{"title":"short label","instructions":"complete, self-contained instructions - the cook sees nothing but this and the listed files","files":["every workspace-relative path this sub-task creates or edits"],"level":"simple, standard or complex"${parallel ? ',"needs":[numbers of the earlier sub-tasks this one builds on, counting from 1; [] when it builds on none]' : ''}${specialists.length ? ',"cook":"a specialist id, or omit"' : ''}${connections.length ? ',"tools":["connection ids, usually none"]' : ''}}]${canRun ? ',"verify":"ONE shell command that proves the work is correct, or empty"' : ''}}
 
 Rules:
 - At most ${maxSubtasks} sub-tasks; prefer fewer. One sub-task per file or tightly related group of files.
@@ -61,7 +65,7 @@ ${
 - Never plan changes to memory.md.${
   canRun
     ? `
-- "verify" runs once after the sub-tasks, in the workspace folder, and its result goes to the Taster. It must finish on its own in seconds and need no input - e.g. "node --test" or "node --check src/app.js". Keep it short (under 300 characters): check that the files exist and run or parse, not what words they contain. Never a server or a watcher. Leave it empty when nothing can be checked that way (e.g. a static web page).${
+- "verify" runs once after the sub-tasks, in the workspace folder, and its result goes to the Taster. It must finish on its own in seconds and need no input - e.g. "node --test" or "node --check src/app.js". Keep it short (under 300 characters): check that the files exist and run or parse, not what words they contain. Never a server or a watcher. Leave it empty when nothing can be checked that way (e.g. a static web page). "npm test" or "npm run x" only when package.json has that script; for node:test files use "node --test", and never add --silent (it hides why a check failed). To check what a program prints, do not write a script around it (execSync): run the program itself, or its tests.${
         // Seen on real runs: a Unix check (test -f ... && grep -q ...) planned for Windows cmd.exe.
         typeof canRun === 'string' && /cmd\.exe/.test(canRun)
           ? `
@@ -70,7 +74,19 @@ ${
       }`
     : ''
 }
-- Questions and small talk: answer in "reply" and return an empty "subtasks" array.`;
+- Questions and small talk: answer in "reply" and return an empty "subtasks" array.
+- A question about the code or files in this folder ("what does calc.js do?"): list those files in "need_files", then answer in "reply" once you have read them. Never plan a sub-task that writes the answer into a file the Owner did not ask for.${
+  canAsk
+    ? `
+- Asking first: when the Owner asks you to BUILD something open-ended and a wrong guess would waste the work (who it is for, a goal, a level, a style - e.g. "build a workout plan"), do not plan yet. Put up to ${MAX_ASK} questions in "ask", each with 2 to 4 short options the Owner can pick with one click, write one friendly line in "reply", and return an empty "subtasks" array. Ask only what changes what gets built. Never ask for questions, fixes, small or clearly described tasks, or anything the request already says - then "ask" is empty.`
+    : ''
+}${
+  // Seen with a real model: asked for the weather with a web search connected, it replied "I don't have real-time data".
+  connections.length
+    ? `
+- A question you cannot answer from what you already know (today's weather, news, prices, the current version of something, a web page) is NOT for "reply" when a connection above can look it up: plan ONE sub-task with no files, that connection in "tools", and instructions saying what to find and to write its SUMMARY as the reply to the Owner (that SUMMARY is all they will see). Never answer that you have no internet or no real-time data while such a connection is listed.`
+    : ''
+}`;
 
 export function managerUser({ memory, files, request, attached = [], extra = [], nudge = '', pinned = [], lessons = [], history = '' }) {
   return [
@@ -141,7 +157,10 @@ export function coderUser({ memory, objective, subtask, current, files, extra = 
     lessonBlock(lessons),
     recallBlock(recall),
     `## Your sub-task: ${subtask.title}\n${subtask.instructions}`,
-    subtask.files.length ? `Files to produce: ${subtask.files.join(', ')}` : '',
+    // Seen: "SUMMARY: Fetched and summarized current weather for Kansas City" - and that was all the Owner got.
+    subtask.files.length
+      ? `Files to produce: ${subtask.files.join(', ')}`
+      : 'No files in this step: your SUMMARY line is the answer the Owner reads. Once you have what you looked up, put the facts themselves in it (numbers, names, dates), not what you did to find them.',
     current.length ? `## Current content of your files\n${current.map(fileBlock).join('\n\n')}` : '',
     `## Workspace files\n${fileList(files)}`,
     extra ? `## Data you requested\n${extra}` : '',

@@ -97,7 +97,7 @@ export const api = {
     remove: (id) => request('DELETE', `/api/triggers/${seg(id)}`),
     enable: (id, enabled) => request('POST', `/api/triggers/${seg(id)}/enabled`, { enabled }),
   },
-  task: (text, attachments = [], shell = false) => request('POST', '/api/task', { text, attachments, ...(shell ? { shell } : {}) }),
+  task: (text, attachments = [], shell = false, answered = false) => request('POST', '/api/task', { text, attachments, ...(shell ? { shell } : {}), ...(answered ? { answered } : {}) }),
   attach: (name, data) => request('POST', '/api/attach', { name, data }),
   stop: () => request('POST', '/api/run/stop'),
   note: (id, text) => request('POST', `/api/agents/${seg(id)}/note`, { text }),

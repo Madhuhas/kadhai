@@ -133,7 +133,67 @@ function messageEl(message) {
     { class: `msg ${message.role}${failed ? ' fail' : ''}${fromManager ? ' tinted' : ''}`, style: fromManager ? tintOf(MANAGER) : null, dataset: message.role === 'manager' && message.runId ? { run: message.runId } : {} },
     h('span', { class: 'who' }, who),
     h('div', { innerHTML: mdLite(message.text) }),
+    fromManager && Array.isArray(message.ask) && message.ask.length ? askCard(message) : null,
   );
+}
+
+/**
+ * The Chef's questions before it plans: one click per question (or your own words), then Build it.
+ * The answers go back as a new task - the request plus them - which the Chef may not ask about again.
+ */
+function askCard(message) {
+  const picked = message.ask.map(() => '');
+  const answered = () => state.chat.some((m) => m.role === 'user' && m.ts > message.ts);
+  const build = button('Build it', '', () => send(false));
+  const skip = button('Skip, you choose', '', () => send(true));
+  const rows = message.ask.map((q, i) => {
+    const own = h('input', { class: 'ask-own', type: 'text', placeholder: 'or your own answer', ariaLabel: `Your own answer: ${q.question}`, maxLength: 200 });
+    const chips = q.options.map((option) =>
+      h('button', { class: 'chip', type: 'button', ariaPressed: 'false', onclick: () => choose(option) }, option),
+    );
+    function choose(option) {
+      picked[i] = picked[i] === option ? '' : option;
+      own.value = '';
+      for (const chip of chips) {
+        const on = chip.textContent === picked[i];
+        chip.classList.toggle('on', on);
+        chip.setAttribute('aria-pressed', String(on));
+      }
+    }
+    own.addEventListener('input', () => {
+      picked[i] = own.value.trim();
+      for (const chip of chips) {
+        chip.classList.remove('on');
+        chip.setAttribute('aria-pressed', 'false');
+      }
+    });
+    own.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        send(false);
+      }
+    });
+    return h('fieldset', { class: 'ask-q' }, h('legend', null, q.question), h('div', { class: 'ask-options' }, ...chips), own);
+  });
+  const card = h('div', { class: 'ask-card' }, ...rows, h('div', { class: 'run-actions' }, build, skip));
+  const lock = () => {
+    for (const el of card.querySelectorAll('button, input')) el.disabled = true;
+    card.classList.add('done');
+  };
+  async function send(skipped) {
+    const lines = message.ask.map((q, i) => `- ${q.question} ${picked[i] || '(you choose)'}`);
+    const text = skipped || !picked.some(Boolean) ? `${message.request}\n\nNo preferences: choose sensible defaults.` : `${message.request}\n\nMy answers:\n${lines.join('\n')}`;
+    lock();
+    try {
+      if ((await api.task(text, [], false, true)).queued) toast('Queued. It starts when the current task finishes');
+    } catch (err) {
+      for (const el of card.querySelectorAll('button, input')) el.disabled = false;
+      card.classList.remove('done');
+      toast(err.message, 'err');
+    }
+  }
+  if (answered() || !message.request) lock();
+  return card;
 }
 
 /** Give each finished run's report its "View changes" / "Undo" buttons. */

@@ -125,7 +125,7 @@ export class Orchestrator {
    * Submit a task. It starts now, or joins the queue if the crew is busy.
    * `run.done` resolves with the result when the run eventually finishes; it never rejects.
    */
-  start(request, { source = 'ui', attachments = [], cook, tools, shell = false } = {}) {
+  start(request, { source = 'ui', attachments = [], cook, tools, shell = false, answered = false } = {}) {
     if (request != null && typeof request !== 'string') throw fail('The task must be text', 400);
     const typed = String(request ?? '').trim();
     if (!typed) throw fail('The task is empty', 400);
@@ -148,6 +148,9 @@ export class Orchestrator {
       queued: false,
       // High flame, typed in the dashboard only: CLI agents may run their own commands in their copy of the folder.
       shell: shell === true && source === 'ui',
+      // The Chef may ask before planning only someone who is there to answer, and only once: the
+      // answers come back as a new task (the request plus them) that may not be asked about again.
+      canAsk: source === 'ui' && answered !== true,
     };
     run.done = new Promise((resolve) => {
       run.finish = resolve;
@@ -226,10 +229,15 @@ export class Orchestrator {
     const spentBefore = this.crew.tokensUsed();
 
     try {
+      // The Chef plans with memory.md in front of it: the last run's objective there is read as this one's
+      // (seen: "how is the weather in kc" planned as Chennai, the city asked about one run before).
+      await this.memory.set({ objective: `New request: ${clip(run.request, 160)}` });
       const plan = await this.#plan(run, signal);
       result = plan.subtasks.length
         ? await this.#cook(run, plan, signal)
-        : { ...result, ok: true, reply: plan.reply || 'Nothing to do for that request.' };
+        : plan.ask.length
+          ? { ...result, ok: true, reply: plan.reply || 'A few questions first, so the crew builds the right thing:', ask: plan.ask }
+          : { ...result, ok: true, reply: plan.reply || 'Nothing to do for that request.' };
     } catch (err) {
       result.reply = signal.aborted ? 'Run stopped by operator.' : `[!] ${err.message}`;
       result.error = err.code ?? 'ERROR';
@@ -249,7 +257,8 @@ export class Orchestrator {
     this.current = null;
     this.crew.settle();
     // What a run cost is kept in the journal; the chat shows usage live in the dashboard's usage bar instead.
-    this.say('manager', result.reply, { runId: run.id, ok: result.ok });
+    // Questions travel with the message, and so does the request they are about: the answers are sent back with it.
+    this.say('manager', result.reply, { runId: run.id, ok: result.ok, ...(result.ask ? { ask: result.ask, request: run.request } : {}) });
     this.bus.publish('run:done', result);
     this.bus.publish('runs:update', { runs: this.runsView() });
 
@@ -366,7 +375,7 @@ export class Orchestrator {
     for (let attempt = 0; ; attempt++) {
       const out = await this.crew.call('general-manager', {
         task: attempt ? 'Refining the plan' : 'Planning the task',
-        system: prompts.managerSystem(this.limits.maxSubtasks, this.runner.enabled ? this.runner.shellName : false, this.crew.specialists(), this.mcp?.groups?.() ?? [], hasJournal, (this.limits.parallelCooks ?? 1) > 1),
+        system: prompts.managerSystem(this.limits.maxSubtasks, this.runner.enabled ? this.runner.shellName : false, this.crew.specialists(), this.mcp?.groups?.() ?? [], hasJournal, (this.limits.parallelCooks ?? 1) > 1, run.canAsk),
         user: async () =>
           prompts.managerUser({
             memory: await this.memory.read(),
@@ -390,10 +399,13 @@ export class Orchestrator {
           continue;
         }
         // Still prose: treat it as a direct answer rather than failing the run.
-        return { objective: '', reply: out.text.trim(), subtasks: [], verify: '' };
+        return { objective: '', reply: out.text.trim(), ask: [], subtasks: [], verify: '' };
       }
 
       const plan = this.#sanitizePlan(raw, run.pin);
+      // Questions are only for someone who can answer them, and they replace the plan: nothing is cooked yet.
+      if (!run.canAsk) plan.ask = [];
+      if (plan.ask.length) plan.subtasks = [];
       // A question about earlier work: look it up once, then let the Chef answer from what was found.
       if (hasJournal && !plan.subtasks.length && plan.needHistory && !history && attempt < 2) {
         history = this.journal.describe(this.journal.search(`${plan.needHistory} ${run.request}`));
@@ -459,6 +471,13 @@ export class Orchestrator {
     return {
       objective: clip(String(raw.objective ?? '').trim(), 200),
       reply: String(raw.reply ?? '').trim(),
+      ask: (Array.isArray(raw.ask) ? raw.ask : [])
+        .map((q) => ({
+          question: clip(String(q?.question ?? '').trim(), 160),
+          options: [...new Set((Array.isArray(q?.options) ? q.options : []).map((o) => clip(String(o ?? '').trim(), 80)).filter(Boolean))].slice(0, prompts.MAX_ASK_OPTIONS),
+        }))
+        .filter((q) => q.question && q.options.length >= 2)
+        .slice(0, prompts.MAX_ASK),
       needFiles: this.#paths(raw.need_files, 6),
       needHistory: clip(String(raw.need_history ?? '').trim(), 200),
       subtasks,
@@ -493,6 +512,8 @@ export class Orchestrator {
     const runSubtask = async (index, subtask) => {
       signal.throwIfAborted();
       subtask.shell = run.shell;
+      // A CLI agent may search the web only for a task the operator typed: never for a flow, a trigger, MCP or ACP.
+      subtask.web = run.source === 'ui';
       mark(index, 'working');
       let outcome = await this.#asCook(subtask.cook, () => this.#subtask(objective, subtask, subtask.cook, signal));
       // A dish a cook could not finish goes up the line - once (to the Senior Cook, or its stand-in when it is switched off).
@@ -592,6 +613,10 @@ export class Orchestrator {
         milestone: `Finished "${objective}": ${done}/${total} sub-tasks ok${verification?.ran ? `, verify ${verification.ok ? 'passed' : 'FAILED'}` : ''}${files.length ? `; files: ${files.join(', ')}` : ''}`,
       });
 
+      // A question answered by looking something up: the answer is the reply, not a work report.
+      if (done === total && !files.length && !verification && run.plan.subtasks.every((s) => !s.files.length && s.summary)) {
+        return { runId: run.id, ok: true, reply: run.plan.subtasks.map((s) => s.summary).join('\n\n'), changed: [] };
+      }
       const lines = [
         `**${objective}**`,
         ...run.plan.subtasks.map((s, i) => `${s.status === 'done' ? '[x]' : s.status === 'skipped' ? '[-]' : '[!]'} ${i + 1}. ${s.title}: ${s.summary}`),
@@ -685,12 +710,38 @@ export class Orchestrator {
   }
 
   /** Run the plan's verification command on behalf of the Taster. */
+  /**
+   * Why a check cannot work at all, before it runs. Seen: "npm test --silent" planned for a folder whose
+   * package.json has no test script - it failed with no output, the Taster invented causes for it
+   * ("rounding errors"), and the Fixer changed code that was already right.
+   */
+  async #cannotCheck(command) {
+    const m = /^\s*npm\s+(?:(test|t)\b|run(?:-script)?\s+([\w:.-]+))/.exec(command);
+    if (!m) return null;
+    const script = m[2] ?? 'test';
+    let scripts = {};
+    try {
+      scripts = JSON.parse((await this.workspace.readFile('package.json')).content).scripts ?? {};
+    } catch {
+      return 'there is no readable package.json';
+    }
+    return scripts[script] ? null : `package.json has no "${script}" script`;
+  }
+
   async #verify(command, signal) {
+    const reason = await this.#cannotCheck(command);
+    if (reason) return { command, ran: false, ok: false, text: `not run: ${reason}` };
     this.crew.setState('head-chef', 'working', `Verifying: ${clip(command, 70)}`);
     try {
       const run = await this.runner.run(command, { owner: 'head-chef', signal });
-      const text = `exit code ${run.code}${run.timedOut ? ' (timed out)' : ''}\n${run.output || '(no output)'}`;
+      const silent = run.code !== 0 && !run.output?.trim() ? '(no output: a check that fails without saying anything may itself be wrong - do not guess at causes in the code)' : '(no output)';
+      const text = `exit code ${run.code}${run.timedOut ? ' (timed out)' : ''}\n${run.output || silent}`;
       this.crew.think('head-chef', `\n$ ${command}\n${clip(text, 600)}\n`);
+      // An inline check that crashed in its own code proves nothing about the work (seen: execSync(..., 'utf8')
+      // returned a Buffer, ".trim is not a function", and three agents ran it five times "fixing" right code).
+      // Only a crash whose first frame is the check itself; an assertion or a thrown Error there is a real result.
+      const crash = run.code !== 0 && /^\s*node\s+(-e|--eval|-p|--print)\b/.test(command) ? /^((?:Syntax|Reference|Type)Error: .*)\n\s+at [^\n]*\[eval\]/m.exec(run.output ?? '') : null;
+      if (crash) return { command, ran: false, ok: false, text: `not run: the check command itself crashed (${clip(crash[1], 160)})` };
       return { command, ran: true, ok: run.code === 0, text };
     } catch (err) {
       if (signal.aborted) throw err;
@@ -729,6 +780,7 @@ export class Orchestrator {
         user: prompts.agentUser({ memory: await this.memory.read(), objective, subtask, lessons: this.journal?.lessonsFor(cook) ?? [], recall: this.journal?.recallFiles(subtask.files) ?? [] }),
         dir,
         shell: Boolean(subtask.shell),
+        web: subtask.web === true,
         signal,
       });
       if (!out) return null;
@@ -832,6 +884,9 @@ export class Orchestrator {
       let strikes = 0; // rounds in a row whose answer had mistakes
       let narrow = false; // whole files only, no look-ups: the breaker's second step
       const served = new Set(); // reads and tool calls already answered in this step
+      // A step with tools and no files is there to look something up: its answer must come from a tool.
+      const mustLook = !subtask.files.length && tools.length > 0;
+      let looked = false;
       for (let round = 0; round <= this.limits.maxToolRounds; round++) {
         const lastRound = round === this.limits.maxToolRounds;
         const out = await this.crew.call(cook, {
@@ -942,6 +997,11 @@ export class Orchestrator {
         const asked = parsed.reads.length + parsed.tools.length + (exec ? parsed.runs.length : 0);
         const requests = narrow ? 0 : asked;
         if (narrow && asked) problems.push('not now: no tools, reads or commands until the files are written');
+        // A look-up step answered from memory is a guess passed off as a fact (seen: "Kansas City: 42°F, partly
+        // cloudy" with the weather tool right there, never called - it was 18°C and raining).
+        if (!requests && !problems.length && mustLook && !looked) {
+          problems.push(`you answered without looking anything up. This step exists to find real, current facts: call ${tools.length === 1 ? tools[0].name : 'one of your tools'} first with a <<<TOOL name>>>{...}<<<END>>> block, then answer from what it returns. Never answer from memory.`);
+        }
         // A cook that answers with words only, when the sub-task exists to produce files, has not done it yet.
         if (!requests && !problems.length && subtask.mustWrite && !outcome.written.length && !outcome.deleted.length) {
           problems.push(`you wrote none of the files this sub-task must produce (${subtask.files.join(', ')}). Send them now, each as a complete <<<FILE path>>> block ending with <<<END>>>${tools.length ? '. If you need information first, call a tool with a <<<TOOL name>>>{...}<<<END>>> block' : ''}.`);
@@ -966,6 +1026,10 @@ export class Orchestrator {
         }
         if (lastRound || (!requests && !problems.length)) {
           outcome.errors.push(...problems);
+          // A look-up step's answer is the point of it: rounds ending on an unanswered look-up is no answer
+          // (seen: four failed web searches, the step ticked done with "searched for the weather" as its summary).
+          if (lastRound && requests && !subtask.files.length) outcome.errors.push('it ran out of rounds before its last look-up was answered');
+          else if (mustLook && !looked && !problems.length) outcome.errors.push('it answered without looking anything up');
           break;
         }
         if (problems.length) {
@@ -976,6 +1040,7 @@ export class Orchestrator {
           extra += await this.#fulfil(parsed, cook, signal, exec);
           for (const p of parsed.reads) served.add(readKey(p));
           for (const c of parsed.tools) served.add(toolKey(c));
+          if (parsed.tools.length) looked = true;
           if (exec) for (const c of parsed.runs) served.add(runKey(c));
         }
       }
