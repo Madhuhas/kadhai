@@ -141,6 +141,27 @@ function createWindow() {
     openOutside(url); // the preview, a link in the chat, a sign-in page: the system browser
     return { action: 'deny' };
   });
+  // Electron shows no right-click menu of its own: give text fields and selections the usual one.
+  win.webContents.on('context-menu', (_e, p) => {
+    const f = p.editFlags;
+    const items = p.isEditable
+      ? [
+          ...p.dictionarySuggestions.slice(0, 4).map((word) => ({ label: word, click: () => win.webContents.replaceMisspelling(word) })),
+          ...(p.misspelledWord ? [{ label: 'Add to dictionary', click: () => win.webContents.session.addWordToSpellCheckerDictionary(p.misspelledWord) }, { type: 'separator' }] : []),
+          { role: 'undo', enabled: f.canUndo },
+          { role: 'redo', enabled: f.canRedo },
+          { type: 'separator' },
+          { role: 'cut', enabled: f.canCut },
+          { role: 'copy', enabled: f.canCopy },
+          { role: 'paste', enabled: f.canPaste },
+          { type: 'separator' },
+          { role: 'selectAll', enabled: f.canSelectAll },
+        ]
+      : p.selectionText.trim()
+        ? [{ role: 'copy' }, { role: 'selectAll' }]
+        : [];
+    if (items.length) Menu.buildFromTemplate(items).popup({ window: win });
+  });
 
   win.on('close', async (e) => {
     if (quitting || !server) return; // a server we did not start is not ours to worry about
