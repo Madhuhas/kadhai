@@ -18,7 +18,7 @@ It runs entirely on **free AI model tiers** (Gemini, Groq, Cerebras and seven mo
 ## Highlights
 
 - **Separate agents for separate jobs.** Planning, coding, checking and fixing are separate agents with separate jobs, coordinated by plain code. Every step has a fixed budget of model calls, so runs are predictable and cheap. Hire your own specialists, or have the Chef write one for you, and switch off any agent a job does not need.
-- **Free by default.** One small Node process with a single dependency, no GPU, no build step. Automatic failover across providers keeps going when a free tier says "slow down".
+- **Free by default.** One small Node process with a single required dependency, no GPU, no build step. Automatic failover across providers keeps going when a free tier says "slow down".
 - **You stay in charge.** Listens only on your own computer. The crew cannot leave its folder. Commands wait for your approval. Every secret is encrypted on disk. Every run can be diffed and undone.
 - **Flows.** Draw automations on a canvas (schedules, feeds, webhooks, AI, logic, HTTP and fifteen built-in services), or just describe one in words and let the Chef draw it. Try any flow safely first: reads run for real, anything that would send or change something is held back and shown.
 - **Connections.** More than sixty services the crew can use while it works (web search, a browser, GitHub, Notion, Linear and more), plus Google Drive, Gmail and Calendar, read-only.
@@ -124,5 +124,6 @@ The Windows installer is built from this repository by GitHub Actions, and each 
 
 - **Logos** of the services Kadhai connects to are from [Simple Icons](https://simpleicons.org) (CC0). The names and logos are trademarks of their owners and are used only to show which service a connection or node talks to; Kadhai is not affiliated with or endorsed by any of them.
 - **Theme palettes** follow [Dracula](https://draculatheme.com), [Nord](https://www.nordtheme.com), [Solarized](https://ethanschoonover.com/solarized/) and the Light and Dark Modern themes of [Visual Studio Code](https://github.com/microsoft/vscode), all MIT licensed. Kadhai uses their colours, not their files.
-- **[Express](https://expressjs.com)** (MIT) is the one dependency.
+- **[Express](https://expressjs.com)** (MIT) is the one required dependency.
+- **[node-pty](https://github.com/microsoft/node-pty)** (MIT) is optional: it gives the terminal a real shell, and Kadhai works without it.
 - **The idea of a skills library** came from [wshobson/agents](https://github.com/wshobson/agents) (MIT). Kadhai's built-in skills are written in its own words.

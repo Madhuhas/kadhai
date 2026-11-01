@@ -55,7 +55,7 @@ Open a terminal in the Kadhai folder and run:
 npm install
 ```
 
-This installs Kadhai's single dependency. It takes a few seconds.
+This installs Kadhai's dependency, plus the optional one for the real terminal. It takes a few seconds.
 
 ### Try it without an account (demo mode)
 
@@ -357,7 +357,11 @@ Click **[change]** at the top of the files panel to open any folder on your comp
 
 ### Terminal
 
-**terminal** in the taskbar (or `` Ctrl+` ``) opens a terminal in the folder. Type a command and see its output; `cd` moves between sub-folders, the up arrow recalls earlier commands, Tab completes file names. Dev servers keep running: a command ending in ` &`, or a known one such as `npm run dev` or `vite`, has no time limit, and when it prints a local address the browser tab opens it. It runs one command at a time and shows its output; programs that wait for you to type (or full-screen ones like vim) do not work there.
+**terminal** in the taskbar (or `` Ctrl+` ``) opens a terminal in the folder. Type a command and see its output; `cd` moves between sub-folders, the up arrow recalls earlier commands, Tab completes file names. Dev servers keep running: a command ending in ` &`, or a known one such as `npm run dev` or `vite`, has no time limit, and when it prints a local address the browser tab opens it. This *commands* view runs one command at a time and shows its output, and it is also where the crew's commands appear.
+
+For anything that waits for you to type, press **+ shell** in the terminal's title bar: a real shell (PowerShell on Windows, your usual shell elsewhere) opens in the folder, in a tab of its own. Interactive programs work there: `npm init`, `node` or `python` prompts, `git` asking for a message, full-screen programs such as `vim`, colours, `Ctrl+C` to stop, the up arrow for earlier commands. Select text to copy it (`Ctrl+C` copies when something is selected), `Ctrl+V` pastes. Every key goes to the shell except `` Ctrl+` `` (which closes the terminal), `F1` and `Ctrl+Shift+P`. Up to four shells can be open; closing a tab ends that shell and everything started from it, and so does opening another folder or stopping Kadhai. A shell keeps running if you reload the page, and comes back with what it showed.
+
+Good to know: a shell is yours, exactly like one you open on your computer. The crew never types into it, nothing in it asks for approval, and it is not sandboxed (with the Docker sandbox on, **+ shell** is not offered). It needs the `node-pty` package, which `npm install` adds on Windows and macOS; where it cannot be installed, Kadhai works as before with the *commands* view only.
 
 ### Browser
 

@@ -173,6 +173,8 @@
       <dialog id="terminal-dialog" class="dialog term-window">
         <div class="panel-head">
           <strong>terminal</strong>
+          <!-- "commands" (below) and one tab per real shell (shell.js) -->
+          <div id="term-tabs" class="term-tabs" role="tablist" aria-label="Terminal views"></div>
           <span class="spacer"></span>
           <button id="term-size" class="icon-btn" title="Larger or smaller" aria-label="Make the terminal larger or smaller" type="button">[]</button>
           <button id="term-close" class="icon-btn" title="Close" type="button">&times;</button>
@@ -188,6 +190,7 @@
             </div>
           </form>
         </section>
+        <div id="shell-views" class="shell-views" hidden></div>
       </dialog>
     </main>
 

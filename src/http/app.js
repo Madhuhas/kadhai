@@ -387,6 +387,24 @@ export function apiRouter(engine) {
   api.post('/exec/:id/deny', (req, res) => res.json({ ok: runner.deny(req.params.id) }));
   api.post('/exec/:id/kill', (req, res) => res.json({ ok: runner.kill(req.params.id) }));
 
+  // The real terminal (src/core/pty.js): the operator's own shell, from this dashboard only.
+  const { terminals } = engine;
+  api.get('/pty', wrap(async (_req, res) => res.json(await terminals.status())));
+  api.post('/pty', wrap(async (req, res) => res.status(201).json(await terminals.open({ cols: req.body?.cols, rows: req.body?.rows, dir: String(req.body?.dir ?? '') }))));
+  api.post('/pty/:id/input', wrap(async (req, res) => {
+    terminals.write(req.params.id, req.body?.data);
+    res.json({ ok: true });
+  }));
+  api.post('/pty/:id/resize', wrap(async (req, res) => {
+    terminals.resize(req.params.id, req.body?.cols, req.body?.rows);
+    res.json({ ok: true });
+  }));
+  api.get('/pty/:id/replay', wrap(async (req, res) => res.json({ data: terminals.replay(req.params.id) })));
+  api.delete('/pty/:id', wrap(async (req, res) => {
+    terminals.close(req.params.id);
+    res.json({ ok: true });
+  }));
+
   api.use((_req, res) => res.status(404).json({ error: 'Unknown API route' }));
   return api;
 }

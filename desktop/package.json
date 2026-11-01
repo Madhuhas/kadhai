@@ -47,7 +47,13 @@
         "from": "../node_modules",
         "to": "kadhai/node_modules",
         "filter": [
-          "**/*"
+          "**/*",
+          "!node-pty/**/*.pdb",
+          "!node-pty/prebuilds/darwin-*/**",
+          "!node-pty/prebuilds/win32-arm64/**",
+          "!node-pty/deps/**",
+          "!node-pty/src/**",
+          "!node-pty/third_party/**"
         ]
       },
       {

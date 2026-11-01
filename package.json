@@ -14,13 +14,16 @@
     "demo": "node server.js --mock",
     "mcp": "node bin/mcp-server.js",
     "acp": "node bin/acp-agent.js",
-    "test": "node --test test/core.test.js test/features.test.js test/hardening.test.js test/flame.test.js test/runs.test.js test/flows.test.js test/agents.test.js test/files.test.js test/tools.test.js"
+    "test": "node --test test/core.test.js test/features.test.js test/hardening.test.js test/flame.test.js test/runs.test.js test/flows.test.js test/agents.test.js test/files.test.js test/tools.test.js test/terminal.test.js"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "express": "^4.21.2"
+  },
+  "optionalDependencies": {
+    "node-pty": "1.1.0"
   },
   "author": "Kotini Sai Madhuhas",
   "license": "AGPL-3.0-or-later"

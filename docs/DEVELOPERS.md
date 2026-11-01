@@ -25,7 +25,7 @@ How Kadhai is built, how to work on it, and the rules that keep it safe. Read th
 These are product requirements, not preferences.
 
 - **Free to run, small footprint.** It must stay fully usable on free API keys on an ordinary laptop with no GPU. Paid keys and subscriptions are optional extras, labelled as paid and capped by a daily token limit. Kadhai never runs models itself.
-- **One dependency.** `express` is the only npm dependency. Adding another needs a very strong reason; the platform (Node's `node:` modules, the browser's DOM) is usually enough. The Claude API is spoken with raw `fetch` for this reason.
+- **One required dependency.** `express` is the only npm dependency Kadhai needs; `node-pty` is optional (the real terminal, the user's choice) and loaded only if it is there. Adding another needs a very strong reason; the platform (Node's `node:` modules, the browser's DOM) is usually enough. The Claude API is spoken with raw `fetch` for this reason.
 - **No build step, no framework.** The dashboard is hand-written ES modules in `public/`, served as they are. No TypeScript compilation, no bundler, no CSS preprocessor, no web fonts or CDN assets: the UI works offline.
 - **ESM only**, Node 20 or newer, built-ins imported with the `node:` prefix.
 - **Local only.** The server binds to loopback, and `localOnly` rejects any non-loopback `Host` and any foreign `Origin`.

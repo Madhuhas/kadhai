@@ -13,6 +13,7 @@ import { CLI_AGENTS } from './cliProvider.js';
 import { Crew } from './crew.js';
 import { Orchestrator } from './orchestrator.js';
 import { Runner } from './runner.js';
+import { Terminals } from './pty.js';
 import { Checkpoints } from './checkpoints.js';
 import { StateStore } from './stateStore.js';
 import { createKeyService } from './keys.js';
@@ -147,6 +148,8 @@ export async function createEngine(overrides = {}) {
   const mcp = new McpHub({ configPath: config.mcpConfigPath, bus, version: config.version });
   const runner = new Runner({ cwd: config.workspaceDir, bus, limits: config.limits, interactive: config.interactive });
   await runner.init();
+  // The operator's own shell, dashboard only (pty.js); a test hands in its own spawn.
+  const terminals = new Terminals({ bus, workspace, runner, enabled: config.interactive || Boolean(overrides.ptySpawn), spawn: overrides.ptySpawn });
   const checkpoints = new Checkpoints({ root: config.workspaceDir });
   await checkpoints.init();
   // Connected accounts. Their tools sit beside the MCP ones in a single list for the cooks.
@@ -237,6 +240,7 @@ export async function createEngine(overrides = {}) {
     mcp,
     connectors: { google },
     runner,
+    terminals,
     checkpoints,
     git,
     orchestrator,
@@ -340,6 +344,7 @@ export async function createEngine(overrides = {}) {
       if (config.watchKeys) fs.unwatchFile(config.keysFile, onKeysFile);
       orchestrator.stop();
       runner.killAll();
+      terminals.closeAll();
       await store.flush();
       workspace.close();
       memory.close();
