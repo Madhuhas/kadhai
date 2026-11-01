@@ -14,7 +14,7 @@
     "demo": "node server.js --mock",
     "mcp": "node bin/mcp-server.js",
     "acp": "node bin/acp-agent.js",
-    "test": "node --test test/core.test.js test/features.test.js test/hardening.test.js test/flame.test.js test/runs.test.js test/flows.test.js test/agents.test.js"
+    "test": "node --test test/core.test.js test/features.test.js test/hardening.test.js test/flame.test.js test/runs.test.js test/flows.test.js test/agents.test.js test/files.test.js test/tools.test.js"
   },
   "engines": {
     "node": ">=20"

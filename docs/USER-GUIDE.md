@@ -139,7 +139,7 @@ The crew works in the folder shown at the top of the files panel on the left. At
 
 On a phone the taskbar keeps only **kitchens**, **crew**, the flame and **more**; terminal, keys, flows, connect, providers and the layout lock are inside **more**.
 
-Keyboard shortcuts: `Enter` send, `Shift+Enter` new line, `Ctrl+K` jump to the chat box, `Ctrl+S` save the file being edited, `` Ctrl+` `` open the terminal, `Esc` close a dialog or menu, or bring a full-screen window back to its normal size.
+Keyboard shortcuts: `Enter` send, `Shift+Enter` new line, `Ctrl+K` jump to the chat box, `Ctrl+S` save the file in front, `Ctrl+P` open a file by name, `Ctrl+Shift+P` (or `F1`) run any command, `Ctrl+Shift+F` search all files, `` Ctrl+` `` open the terminal, `Esc` close a dialog or menu, or bring a full-screen window back to its normal size.
 
 ### Resizing windows and full screen
 
@@ -175,7 +175,17 @@ You can also ask about earlier work in plain words: *What did we do yesterday?*,
 
 ### Attaching files
 
-Press **+ attach**, or drop or paste files on the chat box. Up to 5 files of 2 MB each are saved into the folder under `attachments/` (never over an existing file) and shown to the Chef with your message. Text files are read; images and other binary files are only saved and named, because most free models read text only.
+Press **+ attach**, or drop or paste files on the chat box. Up to 5 files of 2 MB each are saved into the folder under `attachments/` (never over an existing file) and shown to the Chef with your message. Most free models read text only, so anything that is not text is turned into text first, and the chat tells you how each file was read:
+
+| You attach | How it is read |
+|---|---|
+| Text, code, Markdown, CSV, JSON | As it is |
+| PDF | Its text is read on your computer, with no model call. A scanned page (a picture of a page) is treated like an image. |
+| Word (`.docx`), Excel (`.xlsx`), PowerPoint (`.pptx`), OpenDocument (`.odt`, `.ods`, `.odp`) | Their text, sheet cells and slide text are read on your computer, with no model call. Table rows stay rows. |
+| Images (`.png`, `.jpg`, `.gif`, `.webp`) | A model that can see writes down every word and describes the picture, once. That takes one call per image, up to 3 a run on low flame and 10 on high. Gemini's free key can do this, and so can a Claude key. Without one, the chat says so and nothing is sent. |
+| Old Office files (`.doc`, `.xls`, `.ppt`), zip archives, password-protected PDFs, audio, video | Not read. The chat says why and what to do instead, such as saving as `.docx` or pasting the text. |
+
+The crew uses what was read, and the file itself stays as it is: a cook never writes over a PDF or an image.
 
 ### While it runs
 
@@ -312,7 +322,34 @@ Every number is still a hard limit on both flames.
 
 ### Files
 
-Open a file to see it with syntax highlighting; **Edit** and **Save** (`Ctrl+S`) change it. `.js` and `.py` files have **Run**, `.html` files have **Preview**.
+Click a file and it opens in the editor, ready to type in. Several files can be open at once, each in a tab of its own; a `*` on the tab (and in the file list) means it has unsaved changes, which stay put while you look at other tabs. **Save** (`Ctrl+S`) writes the file, **Revert** throws your changes away. `.js` and `.py` files have **Run**, `.html` files have **Preview**.
+
+The editor keeps the file's own line endings (a Windows file stays Windows) and its indentation (shown in the bar at the bottom, with the line and column; click either to switch it). If the crew changes a file while you have unsaved changes in it, a bar says so and you choose: **Use theirs** or **Keep mine**. Nothing you typed is lost without asking.
+
+| Keys | What they do |
+|---|---|
+| `Ctrl+F`, `Ctrl+H` | Find, and find and replace, in this file (`Aa` match case, `W` whole word, `.*` regular expression) |
+| `Ctrl+G` | Go to a line |
+| `Tab`, `Shift+Tab` | Indent or outdent (the selected lines, if several) |
+| `Ctrl+/` | Comment or uncomment the line or lines |
+| `Alt+Up`, `Alt+Down` | Move the line up or down; with `Shift`, copy it |
+| `Ctrl+Shift+K` | Delete the line |
+| `Ctrl+Enter`, `Ctrl+Shift+Enter` | A new line below or above |
+| `Ctrl+D` | Select the word, then the next place it appears |
+| `Ctrl+L` | Select the line |
+| `Ctrl+Z`, `Ctrl+Y` | Undo and redo: every change, including replace all and moving lines |
+
+Brackets and quotes close themselves, `Enter` keeps the indentation (and adds a step after `{`), and the bracket that pairs with the one at the cursor is outlined.
+
+### Search, quick open and commands
+
+- **Search** (the *search* tab over the file list, or `Ctrl+Shift+F`) looks through every file in the folder. Results are listed by file; click one to open the file at that line. Replace changes every match in the files listed. A file an agent is working on is left alone and named.
+- **Quick open** (`Ctrl+P`): type a few letters of a file's name (`utl` finds `util.js`) and press Enter. `name:12` opens it at line 12.
+- **Commands** (`Ctrl+Shift+P` or `F1`, or **more** -> **commands**): everything the taskbar and menus do, by name: *Theme: Dark*, *Flame: High*, *View: Terminal*, *Crew: Open Chef* and so on.
+
+### Problems
+
+JavaScript and JSON files are checked for syntax errors when you open and save them: the line number turns red, the mistake is underlined, and the bar at the bottom says what is wrong. The *problems* tab lists every problem in the folder (**check the folder** checks them all); **fix** sends a file's problems to the crew as a task. The check only reads the code, it never runs it.
 
 ### Changing folder
 

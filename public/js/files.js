@@ -2,14 +2,16 @@ import { $, h, fmtBytes, toast } from './util.js';
 import { tintOf } from './ascii.js';
 import { state, on, emit } from './store.js';
 import { api } from './api.js';
-import { highlight, renderDiff } from './highlight.js';
+import { renderDiff } from './highlight.js';
+import { createEditor } from './editor.js';
 import { openRoom } from './rooms.js';
 
 const MEMORY = 'memory.md';
-const GUTTER_MAX_LINES = 5000;
 const RUNNERS = { js: 'node', mjs: 'node', cjs: 'node', py: 'python' };
 const PREVIEWABLE = new Set(['html', 'htm', 'svg']);
+const CHECKABLE = /\.(m?js|cjs|json)$/i; // what the problems check reads (src/core/problems.js)
 const DRAG_TYPE = 'text/kadhai-path';
+const MAX_OPEN = 12; // open files; the oldest one without unsaved changes makes room
 
 const extOf = (path) => path.split('.').pop().toLowerCase();
 const baseOf = (path) => path.split('/').pop();
@@ -19,17 +21,26 @@ const same = (a, b) => a.toLowerCase() === b.toLowerCase();
 
 let files = [];
 let treeCut = false; // the folder has more entries than the tree lists
-let current = null; // the open file, as returned by the API
-let diff = null; // { title, files, patch, truncated } while a run's changes are open
-let editing = false;
-let view = 'kitchen'; // which tab of the stage is showing: 'kitchen', 'doc', 'browser' or 'agent:<id>'
+/**
+ * The open files, in tab order. Each keeps its own editor (and with it the undo history and the
+ * unsaved text) while other tabs are in front: { path, size, binary, truncated, content, editor,
+ * dirty, problems, disk, gone }. `content` is the text as last read or saved; `disk` is a newer
+ * version written by someone else while this one had unsaved changes.
+ */
+let docs = [];
+let diff = null; // { title, files, patch, truncated } while a run's changes (or one file's) are open
+let view = 'kitchen'; // which tab of the stage is showing: 'kitchen', 'file:<path>', 'diff', 'browser' or 'agent:<id>'
 let browsing = false; // whether the browser tab is open (browser.js owns what is in it)
 let agentTabs = []; // every agent open in a tab, in the order they were opened: [{ id, name }]
 let shownAgent = null; // the agent whose tab is in front, as last told to crew.js
 
 const AGENT = 'agent:';
+const FILE = 'file:';
 /** The id of the agent whose tab is in front, or null. */
 const agentInView = () => (view.startsWith(AGENT) ? view.slice(AGENT.length) : null);
+/** The open file in front, or null. */
+const docInView = () => (view.startsWith(FILE) ? (docs.find((d) => d.path === view.slice(FILE.length)) ?? null) : null);
+const docOf = (path) => docs.find((d) => same(d.path, path));
 let targetDir = ''; // where "new file" and "new folder" will land
 let inline = null; // { mode: 'file' | 'folder' | 'rename', dir, path? } while a name is being typed
 let treeTimer = null;
@@ -87,8 +98,6 @@ async function createIn(dir, mode, name) {
   } else {
     await api.writeFile(path, '');
     await openFile(path);
-    editing = true;
-    renderStage();
   }
   await loadTree();
 }
@@ -98,10 +107,14 @@ async function moveTo(from, to) {
   moving = true;
   try {
     await api.move(from, to);
-    // If the open file (or a folder it lives in) just moved, follow it to its new path.
-    if (current && (current.path === from || current.path.startsWith(`${from}/`))) {
-      await openFile(to + current.path.slice(from.length), { silent: true });
+    // Open files that moved (or live in a folder that did) follow it, unsaved changes and all.
+    for (const doc of docs) {
+      if (doc.path !== from && !doc.path.startsWith(`${from}/`)) continue;
+      const next = to + doc.path.slice(from.length);
+      if (view === FILE + doc.path) view = FILE + next;
+      doc.path = next;
     }
+    renderStage();
   } finally {
     moving = false;
   }
@@ -113,7 +126,7 @@ async function remove(entry) {
   const isDir = entry.type === 'dir';
   if (!confirm(isDir ? `Delete the folder "${entry.path}" and everything in it?` : `Delete "${entry.path}"?`)) return;
   await (isDir ? api.deleteDir(entry.path) : api.deleteFile(entry.path));
-  if (current && (current.path === entry.path || current.path.startsWith(`${entry.path}/`))) closeDoc();
+  for (const doc of docs.filter((d) => d.path === entry.path || d.path.startsWith(`${entry.path}/`))) closeFile(doc, { force: true });
   if (targetDir === entry.path || targetDir.startsWith(`${entry.path}/`)) targetDir = dirOf(entry.path);
   await loadTree();
 }
@@ -147,11 +160,13 @@ function row(entry, branch) {
   }
 
   const owner = !isDir && lockOwner(entry.path);
+  const open = !isDir && docOf(entry.path);
   const classes = [
     'tree-item',
     isDir && 'dir',
     fixed && 'pinned',
-    current && view === 'doc' && same(current.path, entry.path) && 'active',
+    open && docInView() === open && 'active',
+    open?.dirty && 'unsaved',
     isDir && entry.path === targetDir && 'target',
   ];
   const el = h(
@@ -187,6 +202,7 @@ function row(entry, branch) {
     h('span', { class: 'branch' }, branch),
     h('span', { class: 'glyph' }, isDir && collapsed.has(entry.path) ? '+ ' : fixed ? '* ' : ''),
     h('span', { class: 'name' }, isDir ? `${parts.at(-1)}/` : parts.at(-1)),
+    open?.dirty && h('span', { class: 'unsaved-mark', title: 'Unsaved changes' }, ' *'),
     owner && h('span', { class: 'lock', title: `Locked by ${owner}` }, '[lock]'),
     !fixed &&
       h(
@@ -225,7 +241,7 @@ function renderTree() {
   if (!rows.length) {
     rows.push(h('div', { class: 'tree-empty' }, 'This folder is empty.', h('br'), 'Use + to add a file, or ask the crew to build something.'));
   }
-  if (treeCut) rows.push(h('div', { class: 'tree-empty' }, `A large folder: only the first ${files.length} files and folders are listed here. The crew can still read and write every file.`));
+  if (treeCut) rows.push(h('div', { class: 'tree-empty' }, `A large folder: only the first ${files.length} files and folders are listed here. The crew can still read and write every file, and Ctrl+P finds any of them.`));
   const tree = $('#tree');
   tree.replaceChildren(...rows);
   tree.classList.toggle('target', targetDir === '');
@@ -246,13 +262,25 @@ function renderLocks() {
 
 // ================================================================= the stage
 
-function closeDoc() {
-  current = null;
-  diff = null;
-  editing = false;
-  if (view === 'doc') view = 'kitchen';
+/** Close one open file. Unsaved changes are asked about first, unless `force`. -> whether it closed */
+function closeFile(doc, { force = false } = {}) {
+  if (!force && doc.dirty && !confirm(`"${baseOf(doc.path)}" has unsaved changes. Close it and lose them?`)) return false;
+  const at = docs.indexOf(doc);
+  docs.splice(at, 1);
+  doc.editor?.destroy();
+  if (view === FILE + doc.path) {
+    const next = docs[at] ?? docs[at - 1];
+    view = next ? FILE + next.path : 'kitchen';
+  }
   renderStage();
   renderTree();
+  return true;
+}
+
+function closeDiff() {
+  diff = null;
+  if (view === 'diff') view = docs.length ? FILE + docs.at(-1).path : 'kitchen';
+  renderStage();
 }
 
 function closeAgent(id) {
@@ -275,27 +303,40 @@ function closeBrowser() {
   renderStage();
 }
 
+function show(id) {
+  // The file being left keeps its caret and scroll for when it comes back.
+  const leaving = docInView();
+  if (leaving?.editor && id !== view) leaving.view = leaving.editor.view();
+  view = id;
+  renderStage();
+  renderTree();
+}
+
 function renderTabs() {
-  const hasDoc = Boolean(current || diff);
-  const tab = (id, label, closable) =>
+  const tab = (id, label, onClose, { title = label, tint = null, unsaved = false } = {}) =>
     h(
       'button',
-      { class: `tab${view === id ? ' active' : ''}${id.startsWith(AGENT) ? ' tinted' : ''}`, style: id.startsWith(AGENT) ? tintOf(id.slice(AGENT.length)) : null, role: 'tab', 'aria-selected': String(view === id), title: label, onclick: () => { if (editing && id !== 'doc') return toast('Save or cancel your edit first', 'err'); view = id; renderStage(); renderTree(); } },
+      { class: `tab${view === id ? ' active' : ''}${tint ? ' tinted' : ''}${unsaved ? ' unsaved' : ''}`, style: tint ? tintOf(tint) : null, role: 'tab', 'aria-selected': String(view === id), title, onclick: () => show(id), onauxclick: (e) => e.button === 1 && onClose?.() },
       h('span', { class: 'tab-label' }, label),
-      closable && h('span', { class: 'tab-close', title: 'Close', onclick: (e) => { e.stopPropagation(); if (id.startsWith(AGENT)) return closeAgent(id.slice(AGENT.length)); if (id === 'browser') return closeBrowser(); if (editing && !confirm('Discard your unsaved changes?')) return; closeDoc(); } }, '×'),
+      unsaved && h('span', { class: 'tab-unsaved', title: 'Unsaved changes' }, '*'),
+      onClose && h('span', { class: 'tab-close', title: 'Close', onclick: (e) => { e.stopPropagation(); onClose(); } }, '×'),
     );
+  // Two open files with the same name are told apart by their folder.
+  const label = (doc) => (docs.filter((d) => baseOf(d.path) === baseOf(doc.path)).length > 1 ? `${baseOf(dirOf(doc.path)) || '.'}/${baseOf(doc.path)}` : baseOf(doc.path));
   // replaceChildren() would print a bare false as the text "false", so only real nodes go in.
   $('#tabs').replaceChildren(
-    tab('kitchen', 'kitchen.exe', false),
-    ...agentTabs.map((agent) => tab(AGENT + agent.id, agent.name, true)),
-    ...(browsing ? [tab('browser', 'browser', true)] : []),
-    ...(hasDoc ? [tab('doc', diff ? 'Changes' : baseOf(current.path), true)] : []),
+    tab('kitchen', 'kitchen.exe', null),
+    ...agentTabs.map((agent) => tab(AGENT + agent.id, agent.name, () => closeAgent(agent.id), { tint: agent.id })),
+    ...(browsing ? [tab('browser', 'browser', closeBrowser)] : []),
+    ...docs.map((doc) => tab(FILE + doc.path, label(doc), () => closeFile(doc), { title: doc.path, unsaved: doc.dirty })),
+    ...(diff ? [tab('diff', 'Changes', closeDiff, { title: diff.title })] : []),
   );
+  $('#tabs').querySelector('.tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
 function renderDiffView(body) {
   const STATUS = { A: 'added', M: 'changed', D: 'deleted', R: 'renamed' };
-  for (const id of ['file-run', 'file-preview', 'file-edit', 'file-save', 'file-cancel']) $(`#${id}`).hidden = true;
+  for (const id of ['file-run', 'file-preview', 'file-save', 'file-revert']) $(`#${id}`).hidden = true;
   $('#file-path').textContent = diff.title;
   $('#file-meta').textContent = `${diff.files.length ? `${diff.files.length} file(s) changed` : 'what changed'}${diff.truncated ? ' · diff truncated' : ''}`;
   if (!diff.patch.trim()) {
@@ -309,9 +350,27 @@ function renderDiffView(body) {
   body.scrollTop = 0;
 }
 
+/** The bar over an open file that someone else changed or deleted while it had unsaved changes. */
+function diskBar(doc) {
+  if (doc.gone) {
+    return h('div', { class: 'disk-bar', role: 'status' },
+      h('span', null, 'This file was deleted on disk. Saving puts it back.'),
+      h('span', { class: 'spacer' }),
+      h('button', { class: 'btn sm', type: 'button', onclick: () => closeFile(doc, { force: true }) }, 'Close it'));
+  }
+  if (doc.disk == null) return null;
+  const who = lockOwner(doc.path) ?? 'someone else';
+  return h('div', { class: 'disk-bar', role: 'status' },
+    h('span', null, `This file was changed on disk (${state.agents[who]?.name ?? who}) while you had unsaved changes.`),
+    h('span', { class: 'spacer' }),
+    h('button', { class: 'btn sm', type: 'button', title: 'Throw away your changes and load the new version', onclick: () => { const text = doc.disk; doc.disk = null; doc.content = text; doc.editor.setText(text); renderStage(); check(doc); } }, 'Use theirs'),
+    h('button', { class: 'btn sm', type: 'button', title: 'Keep your version; saving will overwrite theirs', onclick: () => { doc.disk = null; renderStage(); } }, 'Keep mine'));
+}
+
 function renderStage() {
   const body = $('#file-body');
-  if (view === 'doc' && !current && !diff) view = 'kitchen';
+  if (view === 'diff' && !diff) view = 'kitchen';
+  if (view.startsWith(FILE) && !docInView()) view = 'kitchen';
   if (agentInView() && !agentTabs.some((agent) => agent.id === agentInView())) view = 'kitchen';
   renderTabs();
 
@@ -342,64 +401,155 @@ function renderStage() {
   }
 
   $('#file-bar').hidden = false;
-  if (diff) return renderDiffView(body);
+  if (view === 'diff') return renderDiffView(body);
 
-  const editable = !current.binary && !current.truncated && current.path !== MEMORY;
-  const owner = lockOwner(current.path);
-  const ext = extOf(current.path);
-  $('#file-path').textContent = current.path;
-  $('#file-meta').textContent = `${fmtBytes(current.size)}${owner ? ` · locked by ${owner}` : ''}${current.path === MEMORY ? ' · kept by the crew, read-only' : ''}`;
-  $('#file-run').hidden = editing || !RUNNERS[ext] || state.exec.mode === 'off';
-  $('#file-preview').hidden = editing || !PREVIEWABLE.has(ext) || !state.app.previewUrl;
-  $('#file-edit').hidden = !editable || editing;
-  $('#file-save').hidden = !editing;
-  $('#file-cancel').hidden = !editing;
+  const doc = docInView();
+  const owner = lockOwner(doc.path);
+  const ext = extOf(doc.path);
+  $('#file-path').textContent = doc.path;
+  $('#file-meta').textContent = `${fmtBytes(doc.size)}${owner ? ` · locked by ${state.agents[owner]?.name ?? owner}` : ''}${doc.path === MEMORY ? ' · kept by the crew, read-only' : doc.truncated ? ' · too large to edit here' : ''}`;
+  $('#file-run').hidden = doc.dirty || !RUNNERS[ext] || state.exec.mode === 'off';
+  $('#file-preview').hidden = doc.dirty || !PREVIEWABLE.has(ext) || !state.app.previewUrl;
+  $('#file-save').hidden = !doc.editor || !(doc.dirty || doc.gone);
+  $('#file-revert').hidden = !doc.editor || !doc.dirty;
 
-  if (current.binary) {
+  if (!doc.editor) {
     body.replaceChildren(h('div', { class: 'empty' }, 'This is a binary file, so there is nothing to show.'));
     return;
   }
-  if (editing) {
-    const editor = h('textarea', { class: 'editor', value: current.content, ariaLabel: `Contents of ${current.path}`, spellcheck: false });
-    editor.spellcheck = false;
-    body.replaceChildren(editor);
-    editor.focus();
+  // Re-renders happen all the time (locks, runs): the editor element is only moved in when it is not already there.
+  const holder = body.firstElementChild?.classList.contains('doc') ? body.firstElementChild : null;
+  const bar = diskBar(doc);
+  if (holder?.lastElementChild !== doc.editor.el || holder.children.length !== (bar ? 2 : 1)) {
+    body.replaceChildren(h('div', { class: 'doc' }, ...(bar ? [bar] : []), doc.editor.el));
+    doc.editor.restore(doc.view);
+  }
+}
+
+/** Problems in an open file (JSON and JavaScript only), into its editor and the problems view. */
+async function check(doc) {
+  if (!CHECKABLE.test(doc.path) || !doc.editor) return;
+  try {
+    const { problems } = await api.problems(doc.path);
+    doc.problems = problems;
+    doc.editor.setProblems(problems);
+    emit('problems', { path: doc.path, problems });
+  } catch {
+    // A check that cannot run is not a problem in the file.
+  }
+}
+
+function makeDoc(data) {
+  const doc = { path: data.path, size: data.size, binary: data.binary, truncated: data.truncated, content: data.content, dirty: false, problems: [], disk: null, gone: false, view: null, editor: null };
+  if (!data.binary) {
+    doc.editor = createEditor({
+      text: data.content,
+      ext: extOf(data.path),
+      readOnly: data.truncated || data.path === MEMORY,
+      onDirty: (dirty) => {
+        doc.dirty = dirty;
+        renderTabs();
+        renderTree();
+        if (docInView() === doc) {
+          $('#file-save').hidden = !(dirty || doc.gone);
+          $('#file-revert').hidden = !dirty;
+          $('#file-run').hidden = dirty || !RUNNERS[extOf(doc.path)] || state.exec.mode === 'off';
+        }
+      },
+      onSave: () => save(doc),
+      onCommand: (command) => emit('command', command),
+    });
+  }
+  return doc;
+}
+
+/**
+ * Open a file in a tab of its own, or bring its tab to the front. `line` (and `col`, `length`)
+ * put the caret there - search results, problems and quick open use it.
+ */
+async function openFile(path, { line, col, length, silent = false } = {}) {
+  let doc = docOf(path);
+  if (!doc) {
+    let data;
+    try {
+      data = await api.readFile(path);
+    } catch (err) {
+      return silent ? undefined : toast(err.message, 'err');
+    }
+    doc = docOf(data.path) ?? makeDoc(data);
+    if (!docs.includes(doc)) {
+      // Room for one more: the oldest tab without unsaved changes goes.
+      if (docs.length >= MAX_OPEN) {
+        const spare = docs.find((d) => !d.dirty && docInView() !== d);
+        if (spare) closeFile(spare, { force: true });
+      }
+      docs.push(doc);
+      check(doc);
+    }
+  }
+  if (!silent) show(FILE + doc.path);
+  if (line && doc.editor) requestAnimationFrame(() => doc.editor.goTo(line, col ?? 1, length ?? 0));
+  else if (!silent) requestAnimationFrame(() => doc.editor?.focus());
+}
+
+/** The open file read again after someone else wrote it. Unsaved changes are never overwritten. */
+async function reload(doc) {
+  let data;
+  try {
+    data = await api.readFile(doc.path);
+  } catch (err) {
+    if (err.status === 404 && !moving) {
+      doc.gone = true;
+      if (!doc.dirty) return closeFile(doc, { force: true });
+      renderStage();
+    }
     return;
   }
-  const scroll = body.firstElementChild?.classList.contains('code-wrap') ? body.scrollTop : 0;
-  const lines = current.content.split('\n').length;
-  const gutter = lines <= GUTTER_MAX_LINES && h('pre', { class: 'gutter' }, Array.from({ length: lines }, (_, i) => i + 1).join('\n'));
-  body.replaceChildren(h('div', { class: 'code-wrap' }, gutter, h('pre', { class: 'code', innerHTML: highlight(current.content, ext) })));
-  body.scrollTop = scroll;
-}
-
-async function openFile(path, { silent = false } = {}) {
-  if (editing && !silent && !confirm('Discard your unsaved changes?')) return;
-  try {
-    const next = await api.readFile(path);
-    const changed = !current || !same(current.path, next.path);
-    current = next;
-    diff = null;
-    if (!silent) view = 'doc';
-    if (changed) $('#file-body').scrollTop = 0;
-  } catch (err) {
-    if (err.status !== 404) return silent ? undefined : toast(err.message, 'err');
-    current = null; // it is gone
+  doc.gone = false;
+  doc.size = data.size;
+  if (data.content === doc.content) return;
+  if (doc.dirty) {
+    doc.disk = data.content;
+  } else {
+    doc.content = data.content;
+    doc.editor?.setText(data.content);
+    check(doc);
   }
-  editing = false;
-  renderStage();
-  renderTree();
+  if (docInView() === doc) renderStage();
 }
 
-async function save() {
+async function save(doc = docInView()) {
+  if (!doc?.editor || doc.editor.dirty() === false && !doc.gone) return;
+  const text = doc.editor.text();
   try {
-    await api.writeFile(current.path, $('#file-body textarea').value);
-    toast(`Saved ${baseOf(current.path)}`, 'ok');
-    editing = false;
-    await openFile(current.path);
+    await api.writeFile(doc.path, text);
+    doc.content = text;
+    doc.disk = null;
+    doc.gone = false;
+    doc.editor.markSaved();
+    toast(`Saved ${baseOf(doc.path)}`, 'ok');
+    renderStage();
+    check(doc);
   } catch (err) {
     fail(err);
   }
+}
+
+function revert(doc = docInView()) {
+  if (!doc?.editor || !confirm(`Throw away your changes to "${baseOf(doc.path)}"?`)) return;
+  doc.editor.setText(doc.disk ?? doc.content);
+  if (doc.disk != null) doc.content = doc.disk;
+  doc.disk = null;
+  renderStage();
+}
+
+/** Close every open file (a different folder was opened): unsaved changes are asked about once. -> whether all closed */
+function closeAll() {
+  const unsaved = docs.filter((d) => d.dirty);
+  if (unsaved.length && !confirm(`${unsaved.length} file(s) have unsaved changes (${unsaved.map((d) => baseOf(d.path)).join(', ')}). Close them and lose the changes?`)) return false;
+  for (const doc of [...docs]) closeFile(doc, { force: true });
+  closeDiff();
+  return true;
 }
 
 // ============================================================ folder dialog
@@ -476,17 +626,17 @@ function initFolderDialog() {
     dialog.showModal();
   });
   $('#folder-open').onclick = async () => {
+    // A different folder is a different project: its files close first, unsaved ones asked about.
+    if (!closeAll()) return;
     // The server drops the live connection while it swaps folders; that is expected, not an outage.
     state.switching = true;
     try {
       const info = await api.openWorkspace(browsed.path);
       dialog.close();
-      // A different folder is a different project: start from a clean slate.
       files = [];
       collapsed.clear();
       targetDir = '';
       inline = null;
-      closeDoc();
       toast(`Now working in ${info.name}`, 'ok');
       emit('resync');
     } catch (err) {
@@ -507,47 +657,39 @@ export function initFiles() {
     loadTree();
     renderLocks();
     renderStage();
+    for (const doc of docs) reload(doc);
   });
   on('locks', () => {
     renderLocks();
     renderTree();
-    if (current && !editing && view === 'doc') renderStage();
+    if (docInView()) renderStage();
   });
   on('fs', (paths = []) => {
     clearTimeout(treeTimer);
     treeTimer = setTimeout(() => !inline && loadTree(), 120);
-    // Live-refresh the open file, but never under the user's cursor.
-    if (current && !editing && !moving && (!paths.length || paths.some((p) => same(p, current.path)))) openFile(current.path, { silent: true });
+    // Open files follow the disk; one with unsaved changes is never overwritten (reload says so instead).
+    if (moving) return;
+    for (const doc of docs) if (!paths.length || paths.some((p) => same(p, doc.path))) reload(doc);
   });
-  on('execmode', () => current && !editing && view === 'doc' && renderStage());
+  on('execmode', () => docInView() && renderStage());
 
   // Clicking an agent opens it in its own tab, or brings its tab to the front if it already has one.
   on('agenttab', (agent) => {
-    if (editing) return toast('Save or cancel your edit first', 'err');
     if (!agentTabs.some((open) => open.id === agent.id)) agentTabs.push(agent);
-    view = AGENT + agent.id;
-    renderStage();
-    renderTree();
+    show(AGENT + agent.id);
   });
 
   // A page on this computer, in the browser tab (browser.js loads it).
   on('browsertab', () => {
-    if (editing) return toast('Save or cancel your edit first', 'err');
     browsing = true;
-    view = 'browser';
-    renderStage();
-    renderTree();
+    show('browser');
   });
 
   // "View changes" on a finished run: open its diff as a tab.
   on('showdiff', async (run) => {
-    if (editing) return toast('Save or cancel your edit first', 'err');
     try {
       diff = { title: run.objective, ...(await api.runDiff(run.id)) };
-      current = null;
-      view = 'doc';
-      renderStage();
-      renderTree();
+      show('diff');
     } catch (err) {
       toast(err.message, 'err');
     }
@@ -555,13 +697,18 @@ export function initFiles() {
 
   // A change picked in Source control: show that one file's patch.
   on('showpatch', (patch) => {
-    if (editing) return toast('Save or cancel your edit first', 'err');
     diff = { files: [], ...patch };
-    current = null;
-    view = 'doc';
-    renderStage();
-    renderTree();
+    show('diff');
   });
+
+  // Other modules (search, problems, quick open) open files here: { path, line?, col?, length? }.
+  on('openfile', ({ path, ...at }) => openFile(path, at));
+  on('kitchentab', () => show('kitchen'));
+  on('savefile', () => save());
+  on('closefile', () => docInView() && closeFile(docInView()));
+  on('findinfile', (replace) => docInView()?.editor?.openFind(Boolean(replace)));
+  on('gotoline', ({ line, col }) => (docInView()?.editor ? docInView().editor.goTo(line, col || 1) : toast('Open a file first', 'err')));
+  on('newfile', () => startNaming('file'));
 
   $('#refresh-files').onclick = loadTree;
   $('#new-file').onclick = () => startNaming('file');
@@ -573,27 +720,25 @@ export function initFiles() {
     renderTree();
   });
 
-  $('#file-edit').onclick = () => {
-    editing = true;
-    renderStage();
-  };
-  $('#file-cancel').onclick = () => {
-    editing = false;
-    renderStage();
-  };
-  $('#file-save').onclick = save;
+  $('#file-save').onclick = () => save();
+  $('#file-revert').onclick = () => revert();
   $('#file-run').onclick = () =>
     api
-      .exec(`${RUNNERS[extOf(current.path)]} "${current.path}"`)
+      .exec(`${RUNNERS[extOf(docInView().path)]} "${docInView().path}"`)
       .then(() => emit('openterminal')) // show the result where it will appear
       .catch((err) => toast(err.message, 'err'));
-  $('#file-preview').onclick = () => emit('browsertab', `${state.app.previewUrl}/${current.path.split('/').map(encodeURIComponent).join('/')}`);
+  $('#file-preview').onclick = () => emit('browsertab', `${state.app.previewUrl}/${docInView().path.split('/').map(encodeURIComponent).join('/')}`);
 
+  // Ctrl+S with the focus outside the editor (on the tab, the tree) still saves the file in front.
   document.addEventListener('keydown', (e) => {
-    if (editing && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 's' && docInView()) {
       e.preventDefault();
       save();
     }
+  });
+  // Leaving the page with unsaved changes asks first, as any editor does.
+  window.addEventListener('beforeunload', (e) => {
+    if (docs.some((d) => d.dirty)) e.preventDefault();
   });
 
   initFolderDialog();

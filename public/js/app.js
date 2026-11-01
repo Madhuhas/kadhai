@@ -17,6 +17,8 @@ import { initBrowser } from './browser.js';
 import { initFlame } from './flame.js';
 import { initUsage } from './usage.js';
 import { initLayout } from './layout.js';
+import { initSearch } from './search.js';
+import { initPalette } from './palette.js';
 
 const THOUGHT_CAP = 20000;
 
@@ -194,7 +196,7 @@ window.addEventListener('unhandledrejection', (e) => {
 });
 
 // Each part starts on its own: one that fails is reported, and the rest of the page still works.
-for (const [name, init] of Object.entries({ initSettings, initKeys, initGit, initMcp, initTerminal, initTriggers, initFlows, initAbout, initRooms, initBrowser, initFlame, initUsage, initLayout, initCrew, initFiles, initConsole })) {
+for (const [name, init] of Object.entries({ initSettings, initKeys, initGit, initMcp, initTerminal, initTriggers, initFlows, initAbout, initRooms, initBrowser, initFlame, initUsage, initLayout, initCrew, initFiles, initSearch, initPalette, initConsole })) {
   try {
     init();
   } catch (err) {

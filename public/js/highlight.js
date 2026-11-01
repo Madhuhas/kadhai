@@ -81,6 +81,21 @@ function matcher(family) {
   return compiled[family];
 }
 
+const NAMES = {
+  js: 'JavaScript', mjs: 'JavaScript', cjs: 'JavaScript', jsx: 'JavaScript JSX', ts: 'TypeScript', tsx: 'TypeScript JSX', json: 'JSON',
+  java: 'Java', c: 'C', h: 'C', cpp: 'C++', cs: 'C#', go: 'Go', rs: 'Rust', kt: 'Kotlin', swift: 'Swift', php: 'PHP', py: 'Python',
+  sh: 'Shell', bash: 'Shell', yml: 'YAML', yaml: 'YAML', toml: 'TOML', env: 'Env', ini: 'INI', rb: 'Ruby', css: 'CSS', scss: 'SCSS',
+  less: 'Less', html: 'HTML', htm: 'HTML', xml: 'XML', svg: 'SVG', vue: 'Vue', md: 'Markdown', markdown: 'Markdown', sql: 'SQL', txt: 'Plain text',
+};
+// How a line is commented out: a prefix, or [open, close] around it. JSON has none.
+const COMMENTS = { c: '//', py: '#', sh: '#', css: ['/*', '*/'], html: ['<!--', '-->'], md: ['<!--', '-->'] };
+
+/** The language of a file extension, for the editor: its name and how it comments a line. */
+export function languageOf(ext) {
+  const family = familyOf[ext];
+  return { name: NAMES[ext] ?? (ext ? ext.toUpperCase() : 'Plain text'), comment: ext === 'json' ? null : ext === 'sql' ? '--' : (COMMENTS[family] ?? null) };
+}
+
 /** Returns HTML for `code`, highlighted according to the file extension. */
 export function highlight(code, ext) {
   const family = familyOf[ext];

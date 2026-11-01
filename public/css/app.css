@@ -464,6 +464,7 @@ textarea:focus, input[type='text']:focus, input[type='password']:focus {
 .tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab-close { display: grid; place-items: center; width: 14px; height: 14px; border-radius: 2px; font-size: 12px; line-height: 1; opacity: 0.6; }
 .tab-close:hover { background: var(--err); color: #fff; opacity: 1; }
+.tab-unsaved, .unsaved-mark { color: var(--warn); font-weight: 600; }
 
 .file-bar { flex: none; display: flex; align-items: center; gap: var(--s2); min-height: 38px; padding: var(--s1) var(--s3); background: var(--panel); border-bottom: 1px solid var(--line); }
 .file-path { font: 500 var(--t-ui) var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -474,7 +475,46 @@ textarea:focus, input[type='text']:focus, input[type='password']:focus {
 .code-wrap pre { margin: 0; padding: var(--s4); font: inherit; }
 .gutter { flex: none; padding-right: var(--s3) !important; text-align: right; color: var(--muted); opacity: 0.5; user-select: none; }
 .code { flex: 1; padding-left: var(--s2) !important; white-space: pre; tab-size: 2; }
-.stage-body textarea.editor { height: 100%; border: 0; border-radius: 0; background: transparent; box-shadow: none; font: var(--t-ui)/1.6 var(--font-mono); white-space: pre; tab-size: 2; padding: var(--s4); }
+/* The editor (editor.js): a transparent textarea over the highlighted code, in one sheet with the line numbers. */
+.stage-body:has(> .ed) { overflow: hidden; }
+.ed { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.ed-scroll { flex: 1; min-height: 0; overflow: auto; }
+.ed-sheet { display: flex; min-width: 100%; width: max-content; min-height: 100%; font: var(--t-ui)/1.6 var(--font-mono); }
+.ed-gutter { position: sticky; left: 0; z-index: 3; flex: none; margin: 0; padding: var(--s4) var(--s3) var(--s4) var(--s4); background: var(--panel); color: var(--muted); opacity: 0.6; text-align: right; font: inherit; user-select: none; }
+.ed-bad { color: var(--err); font-weight: 600; }
+.ed-code { position: relative; flex: 1; min-width: 0; }
+.ed-hl, .ed-input { margin: 0; padding: var(--s4) var(--s6) var(--s4) var(--s2); font: inherit; letter-spacing: 0; white-space: pre; tab-size: 2; overflow-wrap: normal; word-break: normal; }
+.ed-hl { position: relative; z-index: 1; min-height: 100%; color: var(--text); pointer-events: none; }
+.ed-input { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; border: 0; border-radius: 0; outline: 0; resize: none; overflow: hidden; background: transparent; box-shadow: none; color: transparent; caret-color: var(--text); }
+/* See-through: the highlighted code under the textarea must show through a selection. */
+.ed-input::selection { background: color-mix(in srgb, var(--selection) 60%, transparent); color: transparent; }
+/* Weighty on purpose: every theme styles textareas (a field background, a focus frame), and this one must stay see-through. */
+.ed textarea.ed-input, .ed textarea.ed-input:focus { border: 0; outline: 0; background: transparent; box-shadow: none; }
+.doc { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.doc > .ed { flex: 1; height: auto; }
+.stage-body:has(> .doc) { overflow: hidden; }
+.ed-input:focus { box-shadow: none; }
+.ed-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.ed-layer > div { position: absolute; }
+.ed-curline { left: 0; right: 0; background: var(--hover); }
+.ed:not(:focus-within) .ed-curline { background: none; }
+.ed-match { background: color-mix(in srgb, var(--warn) 28%, transparent); border-radius: 2px; }
+.ed-match.current { background: color-mix(in srgb, var(--warn) 55%, transparent); outline: 1px solid var(--warn); }
+.ed-squiggle { border-bottom: 2px dotted var(--err); }
+.ed-bracket { outline: 1px solid var(--muted); border-radius: 2px; }
+.ed-probe { position: absolute; visibility: hidden; white-space: pre; font: inherit; }
+.ed-find { flex: none; display: flex; flex-direction: column; gap: var(--s1); padding: var(--s1) var(--s3); border-bottom: 1px solid var(--line); background: var(--raised); }
+.ed-find-row { display: flex; align-items: center; gap: var(--s1); min-width: 0; }
+.ed-find-input { flex: 1; min-width: 80px; max-width: 360px; height: 26px; padding: 0 var(--s2); font: var(--t-small) var(--font-mono); }
+.ed-opt { flex: none; min-width: 26px; height: 24px; padding: 0 4px; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--panel); color: var(--muted); font: 500 var(--t-micro) var(--font-mono); cursor: pointer; }
+.ed-opt[aria-pressed='true'] { border-color: var(--text); background: var(--text); color: var(--panel); }
+.ed-count { flex: none; min-width: 72px; font: var(--t-micro) var(--font-mono); }
+.ed-count.err, .ed-note.err, .ed-problems.err { color: var(--err); }
+.ed-status { flex: none; display: flex; align-items: center; gap: var(--s3); min-height: 24px; padding: 0 var(--s3); border-top: 1px solid var(--line); background: var(--raised); color: var(--muted); font: var(--t-micro) var(--font-mono); white-space: nowrap; overflow: hidden; }
+.ed-status button { padding: 0 4px; border: 0; border-radius: var(--r-s); background: none; color: inherit; font: inherit; cursor: pointer; }
+.ed-status button:hover { background: var(--hover); color: var(--text); }
+.ed-note { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.disk-bar { flex: none; display: flex; align-items: center; gap: var(--s2); padding: var(--s1) var(--s3); border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--warn) 12%, var(--panel)); font: var(--t-small) var(--font-mono); }
 .empty { display: grid; place-items: center; height: 100%; padding: var(--s5); text-align: center; color: var(--muted); font-size: var(--t-ui); }
 
 /* ---- the kitchen: the kadhai, the order ticket, and the crew at their stations */
@@ -536,6 +576,43 @@ textarea:focus, input[type='text']:focus, input[type='password']:focus {
 .tree-item.naming:hover { background: none; }
 .name-input { flex: 1; min-width: 0; height: 20px; padding: 0 6px !important; border-radius: var(--r-s) !important; font-size: var(--t-ui); }
 .tree-empty { padding: var(--s3) var(--s2); color: var(--muted); font-size: var(--t-small); line-height: 1.6; }
+
+/* The files window's views: files, search, problems (search.js). */
+.side-tabs { flex: none; display: flex; gap: 2px; padding: var(--s1) var(--s2) 0; border-bottom: 1px solid var(--line); }
+.side-tab { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 var(--s2); border: 1px solid transparent; border-bottom: 0; border-radius: var(--r-s) var(--r-s) 0 0; background: none; color: var(--muted); font: 500 var(--t-micro) var(--font-mono); letter-spacing: 0.05em; cursor: pointer; }
+.side-tab:hover { color: var(--text); }
+.side-tab.active { border-color: var(--line); background: var(--panel); color: var(--text); margin-bottom: -1px; }
+.side-view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.side-view[hidden] { display: none; }
+.badge.err { background: color-mix(in srgb, var(--err) 16%, transparent); color: var(--err); }
+.search-form { flex: none; display: flex; flex-direction: column; gap: var(--s1); padding: var(--s2); border-bottom: 1px solid var(--line); }
+.search-row { display: flex; align-items: center; gap: var(--s1); min-width: 0; }
+.search-input { flex: 1; min-width: 0; height: 26px; padding: 0 var(--s2); font: var(--t-small) var(--font-mono); }
+.search-more summary { padding: 2px 0; color: var(--muted); font: var(--t-micro) var(--font-mono); cursor: pointer; }
+.search-more .search-input { width: 100%; margin-top: var(--s1); }
+.search-summary { flex: none; padding: var(--s1) var(--s3); font: var(--t-micro) var(--font-mono); }
+.search-summary.err, .search-text.err { color: var(--err); }
+.problems-note { font: var(--t-micro) var(--font-mono); }
+.search-results { flex: 1; min-height: 0; overflow: auto; padding: 0 var(--s1) var(--s4); }
+.search-file > summary { display: flex; align-items: center; gap: var(--s2); padding: 3px var(--s2); border-radius: var(--r-s); font: 500 var(--t-small) var(--font-mono); cursor: pointer; }
+.search-file > summary:hover { background: var(--hover); }
+.search-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.search-hit { display: flex; gap: var(--s2); width: 100%; padding: 2px var(--s2) 2px var(--s4); border: 0; border-radius: var(--r-s); background: none; color: var(--text); font: var(--t-small) var(--font-mono); text-align: left; cursor: pointer; }
+.search-hit:hover, .search-hit:focus-visible { background: var(--hover); }
+.search-line { flex: none; min-width: 3ch; text-align: right; }
+.search-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre; }
+.search-text mark { background: color-mix(in srgb, var(--warn) 35%, transparent); color: inherit; border-radius: 2px; }
+
+/* Quick open and commands (palette.js). */
+.dialog.palette { width: min(640px, calc(100vw - 32px)); max-height: 70vh; margin: 10vh auto auto; }
+.palette-input { flex: none; margin: var(--s2); height: 32px; padding: 0 var(--s3); font: var(--t-ui) var(--font-mono); }
+.palette-list { flex: 1; min-height: 0; overflow: auto; padding: 0 var(--s1) var(--s2); }
+.palette-item { display: flex; align-items: center; gap: var(--s3); padding: 4px var(--s3); border-radius: var(--r-s); font: var(--t-small) var(--font-mono); cursor: pointer; }
+.palette-item.active { background: var(--hover); outline: 1px solid var(--line); }
+.palette-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-label b { color: var(--tok-fn); }
+.palette-hint, .palette-keys { flex: none; font: var(--t-micro) var(--font-mono); color: var(--muted); }
+.palette-keys { padding: 0 5px; border: 1px solid var(--line); border-radius: var(--r-s); box-shadow: 0 1px 0 var(--line); }
 
 .locks { list-style: none; margin: 0; padding: 0 var(--s3) var(--s3); max-height: 96px; overflow: auto; font: var(--t-small) var(--font-mono); }
 .locks li { display: flex; gap: var(--s2); padding: 2px 0; }
@@ -1067,7 +1144,7 @@ textarea:focus, input[type='text']:focus, input[type='password']:focus {
 :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) .pill.on, :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) .agent-card[data-state='working'] { box-shadow: inset 0 -1px 0 var(--accent); }
 :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) textarea, :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) input[type='text'], :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) input[type='password'], :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) input[type='search'] { background: var(--field-bg); border-color: var(--field-line); }
 :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) textarea:focus, :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) input:focus { border-color: var(--accent); }
-:is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) .chat-form textarea, :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) .stage-body textarea.editor { background: transparent; border-color: transparent; }
+:is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) .chat-form textarea { background: transparent; border-color: transparent; }
 :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) .term-form input { background: none; border: 0; }
 :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) :focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
 :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) .chip:hover, :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) .chip.on, :is([data-theme='dark'], [data-theme='modern'], [data-theme='solarized'], [data-theme='dracula'], [data-theme='nord'], [data-theme='contrast']) .station:hover .station-card { box-shadow: none; transform: none; border-color: var(--accent); }

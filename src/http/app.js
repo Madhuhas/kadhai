@@ -9,6 +9,8 @@ import { catalog as flowCatalog } from '../core/services.js';
 import { readOpenApi } from '../core/flows.js';
 import { escapeHtml, log } from '../core/util.js';
 import { licenseText } from '../config.js';
+import { replaceInWorkspace, searchWorkspace } from '../core/search.js';
+import { checkAll, checkFile } from '../core/problems.js';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const hostOf = (value) => String(value ?? '').replace(/:\d+$/, '').toLowerCase();
@@ -16,6 +18,7 @@ const isLocalHost = (req) => LOCAL_HOSTS.has(hostOf(req.headers.host));
 
 /** How many files and folders the file tree lists at most. */
 const TREE_SHOWN = 1500;
+const QUICK_OPEN_PATHS = 20000;
 
 /**
  * The server can read and write files, so it only talks to this machine:
@@ -119,6 +122,37 @@ export function apiRouter(engine) {
   }));
 
   api.get('/file', wrap(async (req, res) => res.json(await workspace.readFile(req.query.path))));
+
+  // Quick open (Ctrl+P): every file's path, further than the tree lists.
+  api.get('/files/paths', wrap(async (_req, res) => {
+    const all = await workspace.tree({ maxEntries: QUICK_OPEN_PATHS + 1, maxDepth: 20 });
+    res.json({ paths: all.filter((e) => e.type === 'file').slice(0, QUICK_OPEN_PATHS).map((e) => e.path), truncated: all.length > QUICK_OPEN_PATHS });
+  }));
+
+  // Search and replace across the folder (src/core/search.js).
+  const searchOptions = (src) => ({
+    query: String(src.q ?? src.query ?? ''),
+    regex: src.regex === true || src.regex === '1',
+    matchCase: src.case === true || src.case === '1',
+    wholeWord: src.word === true || src.word === '1',
+    include: String(src.include ?? ''),
+    exclude: String(src.exclude ?? ''),
+  });
+  api.get('/search', wrap(async (req, res) => res.json(await searchWorkspace(workspace, searchOptions(req.query)))));
+  api.post(
+    '/search/replace',
+    wrap(async (req, res) => {
+      const body = req.body ?? {};
+      if (typeof body.replace !== 'string') return res.status(400).json({ error: '"replace" must be a string' });
+      // Only the files the user saw in the results, when it says which: never a surprise beyond them.
+      const paths = Array.isArray(body.paths) ? body.paths.filter((p) => typeof p === 'string').slice(0, 5000) : undefined;
+      res.json(await replaceInWorkspace(workspace, { ...searchOptions(body), paths }, body.replace));
+    }),
+  );
+
+  // Syntax problems (src/core/problems.js): one file, or the whole folder.
+  api.get('/problems', wrap(async (req, res) => res.json({ problems: await checkFile(workspace, String(req.query.path ?? '')) })));
+  api.post('/problems/scan', wrap(async (_req, res) => res.json(await checkAll(workspace))));
 
   api.put(
     '/file',
