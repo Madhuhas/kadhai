@@ -416,6 +416,12 @@ textarea:focus, input[type='text']:focus, input[type='password']:focus {
 .welcome .banner { display: inline-block; margin-bottom: var(--s3); text-align: left; }
 .welcome b { display: block; margin-bottom: var(--s1); color: var(--text); font-size: var(--t-title); font-weight: 600; }
 .welcome .tip { font-size: var(--t-small); }
+/* Ready-made requests for job seekers (starters.js). */
+.welcome .starters { margin-top: var(--s5); text-align: left; }
+.starter-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--s2); }
+.starter { display: flex; flex-direction: column; gap: 2px; padding: var(--s2) var(--s3); border: 1px solid var(--line); border-radius: var(--r-m); background: var(--raised); color: var(--text); font: 500 var(--t-small)/1.4 var(--font-mono); text-align: left; cursor: pointer; transition: border-color 0.1s, background 0.1s; }
+.starter:hover, .starter:focus-visible { border-color: var(--text); background: var(--hover); }
+.starter .muted { font-weight: 400; font-size: var(--t-micro); }
 .welcome .notice { display: flex; flex-direction: column; align-items: center; gap: var(--s3); margin-top: var(--s4); padding: var(--s3); border: 1px solid var(--line); border-radius: var(--r-m); background: var(--raised); color: var(--text); }
 
 .queue { flex: none; display: flex; flex-direction: column; gap: var(--s1); padding: 0 var(--s3) var(--s2); }

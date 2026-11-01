@@ -428,3 +428,18 @@ test('change or fix a flow in words: what the user set is kept by code, new node
   assert.match(prompts[1], /What went wrong[\s\S]*Send[\s\S]*401/);
   assert.equal(fixed.changes, 'The Chef left the flow as it was.');
 });
+
+test('the job-alerts example is a valid flow once its phone topic is filled in, and reads in the right order', async (t) => {
+  const { EXAMPLES } = await import('../public/js/flowKit.js');
+  const dir = await tmpDir('job-alerts');
+  const engine = await createEngine({ workspaceDir: dir, providers: FAKE_PROVIDER, mcp: false, flowsFile: path.join(dir, 'flows.json'), credentialsFile: path.join(dir, 'creds.json') });
+  t.after(() => engine.close());
+  const flow = EXAMPLES.find((e) => e.id === 'job-alerts').flow();
+  await assert.rejects(engine.flows.save(flow), /fill in "Topic"/, 'it opens unsaved, asking for the phone topic');
+  flow.nodes.find((n) => n.id === 'push').config.params.topic = 'my-jobs-topic';
+  const saved = await engine.flows.save(flow);
+  assert.equal(saved.nodes.length, 9);
+  // The AI step's instructions come before the postings: a prompt is cut at 12,000 characters.
+  const prompt = saved.nodes.find((n) => n.type === 'ai').config.prompt;
+  assert.ok(prompt.indexOf('Never invent') < prompt.indexOf("node('We Work Remotely')"));
+});

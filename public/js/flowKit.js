@@ -321,4 +321,33 @@ export const EXAMPLES = [
       edges: [w('t', 'only'), w('only', 'a')],
     }),
   },
+  {
+    // Three public job feeds, checked live 2026-11-01 (RemoteOK's RSS answers 410 and is left out).
+    id: 'job-alerts',
+    label: 'Job alerts: postings that fit your profile, every morning',
+    flow: () => ({
+      name: 'Job alerts',
+      description: 'Reads job-profile.md, then new postings from three public job boards, keeps the ones that fit, and sends them to your phone.',
+      tags: ['jobs'],
+      nodes: [
+        n('t', 'trigger', 40, 120, { kind: 'schedule', schedule: { kind: 'daily', time: '08:00', days: [] } }),
+        n('me', 'file', 300, 120, { op: 'read', path: 'job-profile.md', content: '' }, { name: 'My profile' }),
+        n('wwr', 'service', 560, 40, { service: 'rss', action: 'read', credential: '', params: { url: 'https://weworkremotely.com/remote-jobs.rss', limit: '5' } }, { name: 'We Work Remotely' }),
+        n('him', 'service', 560, 200, { service: 'rss', action: 'read', credential: '', params: { url: 'https://himalayas.app/jobs/rss', limit: '5' } }, { name: 'Himalayas' }),
+        n('jcy', 'service', 820, 120, { service: 'rss', action: 'read', credential: '', params: { url: 'https://jobicy.com/feed/job_feed', limit: '5' } }, { name: 'Jobicy' }),
+        n('ai', 'ai', 1080, 120, {
+          // The instructions come first: the prompt is cut at 12,000 characters, and the postings are long.
+          prompt:
+            "You help someone find a job. From the postings below, keep only those that clearly fit their profile, at most 8, best first. Plain text, no Markdown. For each match, exactly three lines and then a blank line:\nTitle - Company\nWhy: one short reason, from the profile\nthe link\n\nIf none fit, write only: No good matches today.\nNever invent a posting, a company or a detail.\n\nTheir profile:\n{{ node('My profile') }}\n\nThe postings:\n{{ node('We Work Remotely') }}\n{{ node('Himalayas') }}\n{{ node('Jobicy') }}",
+          system: '',
+          json: false,
+          agent: '',
+        }, { name: 'Pick the matches' }),
+        n('log', 'file', 1340, 40, { op: 'append', path: 'jobs/alerts.md', content: '## {{ today }}\n{{ input }}\n' }, { name: 'Keep a list' }),
+        n('push', 'service', 1340, 200, { service: 'ntfy', action: 'send', credential: '', params: { topic: '', title: 'Jobs for {{ today }}', message: "{{ node('Pick the matches') }}", priority: '', click: '' } }, { name: 'To my phone' }),
+        n('note', 'note', 300, 300, { text: 'First ask the crew to "set up my job profile" from your resume: it writes job-profile.md. For the phone: install the ntfy app, subscribe to a hard-to-guess topic, and type the same topic in "To my phone". Add any job board RSS feed the same way.', color: '' }, { w: 360, h: 160 }),
+      ],
+      edges: [w('t', 'me'), w('me', 'wwr'), w('wwr', 'him'), w('him', 'jcy'), w('jcy', 'ai'), w('ai', 'log'), w('ai', 'push')],
+    }),
+  },
 ];

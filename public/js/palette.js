@@ -1,6 +1,7 @@
 import { $, h, toast } from './util.js';
 import { state, on, emit } from './store.js';
 import { api } from './api.js';
+import { JOB_STARTERS, useStarter } from './starters.js';
 
 /**
  * Quick open and the command palette, one box as in VS Code:
@@ -45,6 +46,7 @@ function commands() {
     { label: 'Flame: Low (saves tokens)', run: () => setFlame('low') },
     { label: 'Flame: High (better results, more tokens)', run: () => setFlame('high') },
     { label: 'Report a bug', run: click('bug-btn') },
+    ...JOB_STARTERS.map((s) => ({ label: `Job hunt: ${s.label}`, run: () => useStarter(s) })),
   ];
   for (const theme of THEMES()) {
     list.push({ label: `Theme: ${theme.name}`, run: () => { const select = $('#theme-select'); select.value = theme.id; select.dispatchEvent(new Event('change')); } });

@@ -3,6 +3,7 @@ import { BANNER, face, spinner, tintOf } from './ascii.js';
 import { state, on, emit } from './store.js';
 import { api } from './api.js';
 import { colourLine } from './terminal.js';
+import { JOB_STARTERS, useStarter } from './starters.js';
 
 const EXEC_DOM_CAP = 20000;
 const CHAT_DOM_CAP = 200; // messages kept on screen, as many as the server keeps
@@ -236,6 +237,10 @@ function welcome() {
     h('div', null, h('b', null, 'What should we cook?'), 'Type what you want built in the box below. The crew plans it, writes it and checks it, and you can watch them in the kitchen.'),
     h('div', { class: 'tip' }, 'Tip: start a line with ', h('code', null, '!'), ' to run a shell command yourself.'),
     notice && h('div', { class: 'notice' }, h('span', null, notice), button('Add API keys', 'primary', () => emit('openkeys')), !app.mock && button('Try the demo', '', () => emit('trydemo'))),
+    // Looking for a job: ready-made requests (starters.js). Each fills in the box; nothing is sent by itself.
+    h('div', { class: 'starters' },
+      h('div', { class: 'section-label' }, 'looking for a job?'),
+      h('div', { class: 'starter-list' }, ...JOB_STARTERS.map((s) => h('button', { class: 'starter', type: 'button', title: s.hint, onclick: () => useStarter(s) }, h('span', null, s.label), h('span', { class: 'muted' }, s.hint))))),
   );
 }
 

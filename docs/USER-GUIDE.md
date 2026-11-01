@@ -187,6 +187,23 @@ Press **+ attach**, or drop or paste files on the chat box. Up to 5 files of 2 M
 
 The crew uses what was read, and the file itself stays as it is: a cook never writes over a PDF or an image.
 
+### Looking for a job
+
+The empty chat (and the command palette, under *Job hunt*) offers ready-made requests. Each fills in the chat box with the part for you to type selected; nothing is sent until you press Send.
+
+| Starter | What you get |
+|---|---|
+| Set up my job profile | `job-profile.md`, from your attached resume: the roles you fit, your skills, where you want to work. The job alerts read it. |
+| Tailor my resume to a job | A printable one-page resume for that job (`resume-<company>.html`), and `notes-<company>.md`: what changed and why, and which requirements you do not meet, with how to prepare. Nothing is invented: it rewords, reorders and chooses what to stress. |
+| Write a cover letter | Under 300 words, only facts from your resume, as a printable page. |
+| Build my portfolio site | A one-page website from your resume. |
+| Practice for a coding interview | Problems with tests and no answers; ask the crew to check yours. |
+| Prepare for an interview | The likely questions for one job, what a strong answer covers, and questions to ask them. |
+| Track my applications | A page on your computer that keeps your list, with counts and a CSV export. |
+| Get job alerts every morning | Opens a flow: your profile, then new postings from We Work Remotely, Himalayas and Jobicy, filtered by a model, sent to your phone through ntfy and kept in `jobs/alerts.md`. Fill in the phone topic and press Create. |
+
+Print a resume or letter with the browser's *Save as PDF* (open it with **Preview**). Read everything before you send it: free models make mistakes. The skills *Resume tailoring*, *Cover letters* and *Interview practice* hold the same rules for any agent you give them to.
+
 ### While it runs
 
 - **The queue.** A task sent while the crew is busy waits just above the chat box and starts when the crew is free, in the order you sent them. Up to ten can wait; each can be removed.
