@@ -299,7 +299,8 @@ export function createEditor({ text = '', ext = '', readOnly = false, onDirty, o
         const lead = indentOf(l);
         let body = l.slice(lead.length).slice(open.length);
         if (body.startsWith(' ')) body = body.slice(1);
-        if (close) body = body.replace(new RegExp(`\\s?${close.replace(/[*]/g, '\\*')}\\s*$`), '');
+        // Every character that means something in a pattern is escaped, not just the * of "*/" (CodeQL).
+        if (close) body = body.replace(new RegExp(`\\s?${close.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`), '');
         return lead + body;
       }
       return `${l.slice(0, pad)}${open} ${l.slice(pad)}${close ? ` ${close}` : ''}`;

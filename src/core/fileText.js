@@ -308,9 +308,14 @@ function unpredict(data, parms) {
   return out;
 }
 
-// What the 1-byte codes of a simple font mean when it says nothing else.
-const WIN_ANSI = new TextDecoder('windows-1252');
-const winAnsi = (code) => WIN_ANSI.decode(Uint8Array.of(code));
+// What the 1-byte codes of a simple font mean when it says nothing else: Windows-1252. Our own table
+// for 0x80-0x9F, because Node 20's TextDecoder('windows-1252') reads those as Latin-1 control codes
+// (curly quotes came out as \x93 and \x94 on Node 20 in CI; Node 22 is right). 0 = not used.
+const CP1252 = [
+  0x20ac, 0, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021, 0x02c6, 0x2030, 0x0160, 0x2039, 0x0152, 0, 0x017d, 0,
+  0, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022, 0x2013, 0x2014, 0x02dc, 0x2122, 0x0161, 0x203a, 0x0153, 0, 0x017e, 0x0178,
+];
+const winAnsi = (code) => (code >= 0x80 && code <= 0x9f ? (CP1252[code - 0x80] ? String.fromCharCode(CP1252[code - 0x80]) : '') : String.fromCharCode(code));
 
 // Glyph names that appear in /Differences: letters and digits are their own; these are the rest that matter for prose.
 const GLYPHS = {
@@ -1040,7 +1045,17 @@ function readOffice(name, bytes) {
     const format = /spreadsheet/.test(kind) ? 'OpenDocument spreadsheet' : /presentation/.test(kind) ? 'OpenDocument presentation' : 'OpenDocument text';
     // Indentation between elements is not text; <text:s/> is a real space.
     const xml = str('content.xml').replace(/>\s*\n\s*</g, '><').replace(/<text:s(?:\s[^>]*)?\/>/g, ' ');
-    const plain = (part) => entities(part.replace(/<text:tab\/>/g, '\t').replace(/<text:line-break\/>|<\/text:p>|<\/text:h>/g, '\n').replace(/<[^>]+>/g, ''));
+    // Tags are stripped until none are left (one pass can leave "<scr<b>ipt>" as "<script>"). The result is
+    // plain text for a prompt, never HTML; this only keeps it from looking like markup (CodeQL).
+    const stripTags = (s) => {
+      let out = s;
+      for (let before = ''; before !== out; ) {
+        before = out;
+        out = out.replace(/<[^<>]*>/g, '');
+      }
+      return out;
+    };
+    const plain = (part) => entities(stripTags(part.replace(/<text:tab\/>/g, '\t').replace(/<text:line-break\/>|<\/text:p>|<\/text:h>/g, '\n')));
     const flat = flattenTables(xml, { row: 'table:table-row', cell: 'table:table-cell', read: plain, paragraph: (t) => `<text:p>${t}</text:p>` });
     const text = tidy(plain(flat));
     return withProblem({ format, text: clip(text), images: [] });
