@@ -30,5 +30,5 @@ jobs:
           path-to-signatures: signatures/version1/cla.json
           path-to-document: ${{ github.server_url }}/${{ github.repository }}/blob/main/CLA.md
           branch: main
-          allowlist: bot*
+          allowlist: Madhuhas,bot*
           custom-notsigned-prcomment: 'Thank you for your contribution. Before it can be merged, please read the [Contributor License Agreement](${{ github.server_url }}/${{ github.repository }}/blob/main/CLA.md) and sign it by posting the comment below. You keep the copyright in your work, and the project promises it will always stay open source. You only need to do this once.'
