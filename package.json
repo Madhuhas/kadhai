@@ -1,6 +1,6 @@
 {
   "name": "kadhai",
-  "version": "1.0.0-beta.2",
+  "version": "1.0.0-beta.3",
   "description": "A crew of AI agents that plans, writes, checks and fixes code in a folder on your computer, on free model tiers or your own keys.",
   "type": "module",
   "main": "server.js",
