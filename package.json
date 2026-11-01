@@ -1,10 +1,11 @@
 {
   "name": "kadhai",
-  "version": "1.0.0-beta.2",
+  "version": "1.0.0-beta.3",
   "description": "A crew of AI agents that plans, writes, checks and fixes code in a folder on your computer, on free model tiers or your own keys.",
   "type": "module",
   "main": "server.js",
   "bin": {
+    "kadhai": "bin/kadhai.js",
     "kadhai-mcp": "bin/mcp-server.js",
     "kadhai-acp": "bin/acp-agent.js"
   },
@@ -14,13 +15,16 @@
     "demo": "node server.js --mock",
     "mcp": "node bin/mcp-server.js",
     "acp": "node bin/acp-agent.js",
-    "test": "node --test test/core.test.js test/features.test.js test/hardening.test.js test/flame.test.js test/runs.test.js test/flows.test.js test/agents.test.js"
+    "test": "node --test test/core.test.js test/features.test.js test/hardening.test.js test/flame.test.js test/runs.test.js test/flows.test.js test/agents.test.js test/files.test.js test/tools.test.js test/terminal.test.js test/cli.test.js"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "express": "^4.21.2"
+  },
+  "optionalDependencies": {
+    "node-pty": "1.1.0"
   },
   "author": "Kotini Sai Madhuhas",
   "license": "AGPL-3.0-or-later"

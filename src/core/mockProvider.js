@@ -107,7 +107,10 @@ export async function mockCompletion(route, req, { signal, onDelta, role } = {})
   }
 
   const prompt = req.messages.at(-1).content;
-  const text = script(role, `${req.messages[0].content}\n${prompt}`);
+  // Asked to look at an image: say what a reading would look like, without pretending to see.
+  const text = req.images?.length
+    ? `(Demo reading of ${req.images.length === 1 ? 'an image' : `${req.images.length} images`}: a real model that can see would write down every word and describe the picture here.)`
+    : script(role, `${req.messages[0].content}\n${prompt}`);
   for (const piece of text.match(/[\s\S]{1,14}/g) ?? []) {
     await sleep(18, signal);
     onDelta?.({ type: 'text', text: piece });

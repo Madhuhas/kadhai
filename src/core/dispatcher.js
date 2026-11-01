@@ -5,7 +5,7 @@ export class DispatchError extends Error {
   constructor(code, message, extra = {}) {
     super(message);
     this.name = 'DispatchError';
-    this.code = code; // NO_PROVIDERS | RATE_LIMITED | EXHAUSTED | BUDGET
+    this.code = code; // NO_PROVIDERS | NO_VISION | RATE_LIMITED | EXHAUSTED | BUDGET
     Object.assign(this, extra);
   }
 }
@@ -13,7 +13,7 @@ export class DispatchError extends Error {
 const today = () => new Date().toLocaleDateString('en-CA'); // local YYYY-MM-DD
 const freshDay = () => ({ date: today(), calls: 0, promptTokens: 0, completionTokens: 0, rateLimits: 0 });
 
-const COOLDOWN = { rateLimitDefault: 60000, rateLimitMin: 3000, rateLimitMax: 600000, transient: 15000 };
+const COOLDOWN = { rateLimitDefault: 60000, rateLimitMin: 3000, rateLimitMax: 600000, transient: 15000, timeout: 600000, noCredit: 3600000 };
 
 /**
  * Universal failover dispatcher.
@@ -49,6 +49,7 @@ export class Dispatcher {
             command: p.command, // only for tests: another program standing in for the CLI
             api: p.api ?? 'openai',
             paid: Boolean(p.paid), // billed per call: counted against the daily limit
+            vision: Boolean(p.vision) && (p.kind ?? 'api') !== 'cli', // takes images in a request (a CLI runs with its tools off: it never does)
             label: `${p.label}${keyTag}`,
             baseUrl: p.baseUrl,
             key,
@@ -80,6 +81,7 @@ export class Dispatcher {
       provider: route.provider,
       kind: route.kind,
       paid: route.paid,
+      vision: route.vision,
       overBudget: this.#overBudget(route),
       label: route.label,
       model: route.model,
@@ -154,10 +156,10 @@ export class Dispatcher {
    * `prefer` ("<provider>/<model>") is tried before anything else while it is usable;
    * when it is not, the normal order takes over, so failover still works.
    */
-  #pick(skipped, tier, prefer) {
+  #pick(skipped, tier, prefer, vision = false) {
     const now = Date.now();
-    // A paid route that has used up today's limit sits out; the free ones carry on.
-    const usable = (r) => !r.disabled && r.cooldownUntil <= now && !skipped.has(r) && !this.#overBudget(r);
+    // A paid route that has used up today's limit sits out; the free ones carry on. A request with images goes only to a model that sees.
+    const usable = (r) => !r.disabled && r.cooldownUntil <= now && !skipped.has(r) && !this.#overBudget(r) && (!vision || r.vision);
     // High flame: paid keys and subscriptions first (the strong models), then the free ones;
     // light work is not sent to the weakest model there. Low flame: the table as it is.
     const strong = (r) => r.paid || r.kind === 'cli';
@@ -191,6 +193,14 @@ export class Dispatcher {
         // A subscription CLI that is not installed or not signed in: off until the user fixes it.
         route.disabled = err.message;
         break;
+      case 'no_credit':
+        // Seen: Hugging Face out of credits was tried again a minute later in the same run.
+        route.cooldownUntil = Date.now() + COOLDOWN.noCredit;
+        break;
+      case 'timeout':
+        // A route that kept the whole crew waiting should not do so again on the next call.
+        route.cooldownUntil = Date.now() + COOLDOWN.timeout;
+        break;
       case 'too_large':
       case 'bad_request':
       case 'empty':
@@ -203,16 +213,22 @@ export class Dispatcher {
   }
 
   /**
-   * req: { messages | build(), json, maxTokens, temperature }
+   * req: { messages | build(), json, maxTokens, temperature, images? }
+   * `images` ([{ mime, data: base64 }], sent with the last user message) are only ever sent to a route marked `vision`.
    * `build` is re-run on every attempt, so an incoming provider always gets a
    * freshly read memory.md rather than a stale copy.
    */
   async chat(req, { agent, role, tier, prefer, signal, onDelta, onRoute, onWait } = {}) {
+    const vision = Boolean(req.images?.length);
     if (!this.routes.length) {
       throw new DispatchError(
         'NO_PROVIDERS',
         'No models to call yet. Add a free API key or switch on a subscription with the keys button in the dashboard, or try the offline demo with "npm run demo".',
       );
+    }
+
+    if (vision && !this.routes.some((r) => r.vision)) {
+      throw new DispatchError('NO_VISION', 'No model that can look at images is set up. A free Gemini key can (keys button); or paste the text into the chat instead.');
     }
 
     const skipped = new Set();
@@ -221,10 +237,10 @@ export class Dispatcher {
 
     for (;;) {
       signal?.throwIfAborted();
-      const route = this.#pick(skipped, tier, prefer);
+      const route = this.#pick(skipped, tier, prefer, vision);
 
       if (!route) {
-        const live = this.routes.filter((r) => !r.disabled && !skipped.has(r));
+        const live = this.routes.filter((r) => !r.disabled && !skipped.has(r) && (!vision || r.vision));
         const waiting = live.filter((r) => !this.#overBudget(r));
         if (!waiting.length && live.length) {
           throw new DispatchError('BUDGET', `Today's limit for paid models (${this.paidBudget.toLocaleString('en-US')} tokens) is used up, and there is no free route to fall back on. Raise the limit under keys, or add a free key.`);
@@ -236,9 +252,13 @@ export class Dispatcher {
         const waitMs = Math.max(0, wakeAt - Date.now());
         // How patient to be with rate limits is the flame's call: high flame's bigger prompts meet them more often.
         if (waitMs > this.limits.maxRateWaitMs || waits >= (this.limits.rateWaits ?? 3)) {
+          // Say why they are resting: a model that kept the crew waiting (timed out) is not a rate limit.
+          const slow = waiting.every((r) => /timed out/i.test(r.lastError ?? ''));
           throw new DispatchError(
             'RATE_LIMITED',
-            `Every free provider is rate-limited right now. Next slot opens in about ${Math.ceil(waitMs / 1000)}s.`,
+            slow
+              ? `Every model took too long to answer and is resting for a while. The next one is tried again in about ${Math.ceil(waitMs / 60000)} min; a faster model, or low flame, helps.`
+              : `Every free provider is rate-limited right now. Next slot opens in about ${Math.ceil(waitMs / 1000)}s.`,
             { retryAt: wakeAt },
           );
         }

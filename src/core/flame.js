@@ -35,6 +35,8 @@ export const LOW_EXTRAS = {
   draftCalls: 2, // "describe a flow": calls to draw it (the first, plus retries told what was wrong)
   draftCatalogChars: 9000, // ...and how much of the services and connected tools its prompt lists
   flowAiTokens: 2000, // the longest answer an AI node in a flow may give
+  imageReads: 3, // attached images (or scanned PDF pages) one run may have a model that can see write down
+  imageReadTokens: 1500, // ...and how long each of those readings may be
 };
 
 export const HIGH = {
@@ -58,6 +60,8 @@ export const HIGH = {
   draftCalls: 3,
   draftCatalogChars: 30000,
   flowAiTokens: 8000,
+  imageReads: 10,
+  imageReadTokens: 4000,
   // Bigger prompts meet the free tiers' limits more often: wait more, and longer, rather than fail the run.
   maxRateWaitMs: 90000,
   rateWaits: 8,

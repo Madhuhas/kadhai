@@ -17,6 +17,9 @@ import { initBrowser } from './browser.js';
 import { initFlame } from './flame.js';
 import { initUsage } from './usage.js';
 import { initLayout } from './layout.js';
+import { initSearch } from './search.js';
+import { initPalette } from './palette.js';
+import { initShell } from './shell.js';
 
 const THOUGHT_CAP = 20000;
 
@@ -69,6 +72,9 @@ const handlers = {
     state.locks = state.locks.filter((l) => l.path !== path);
     emit('locks');
   },
+  'pty:output': ({ id, data }) => emit('pty', { type: 'output', id, data }),
+  'pty:exit': ({ id, code }) => emit('pty', { type: 'exit', id, code }),
+  'pty:open': ({ id }) => emit('pty', { type: 'open', id }),
   'fs:change': ({ paths }) => emit('fs', paths),
   'fs:write': ({ path }) => emit('fs', [path]),
   'memory:update': () => emit('fs', ['memory.md']),
@@ -194,7 +200,7 @@ window.addEventListener('unhandledrejection', (e) => {
 });
 
 // Each part starts on its own: one that fails is reported, and the rest of the page still works.
-for (const [name, init] of Object.entries({ initSettings, initKeys, initGit, initMcp, initTerminal, initTriggers, initFlows, initAbout, initRooms, initBrowser, initFlame, initUsage, initLayout, initCrew, initFiles, initConsole })) {
+for (const [name, init] of Object.entries({ initSettings, initKeys, initGit, initMcp, initTerminal, initTriggers, initFlows, initAbout, initRooms, initBrowser, initFlame, initUsage, initLayout, initCrew, initFiles, initSearch, initPalette, initShell, initConsole })) {
   try {
     init();
   } catch (err) {

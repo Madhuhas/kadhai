@@ -1,7 +1,7 @@
 {
   "name": "kadhai-desktop",
   "productName": "Kadhai Beta",
-  "version": "1.0.0-beta.2",
+  "version": "1.0.0-beta.3",
   "description": "Kadhai as a desktop app: the same local server, in a window of its own.",
   "private": true,
   "main": "main.cjs",
@@ -47,7 +47,13 @@
         "from": "../node_modules",
         "to": "kadhai/node_modules",
         "filter": [
-          "**/*"
+          "**/*",
+          "!node-pty/**/*.pdb",
+          "!node-pty/prebuilds/darwin-*/**",
+          "!node-pty/prebuilds/win32-arm64/**",
+          "!node-pty/deps/**",
+          "!node-pty/src/**",
+          "!node-pty/third_party/**"
         ]
       },
       {

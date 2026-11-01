@@ -9,6 +9,9 @@ import { catalog as flowCatalog } from '../core/services.js';
 import { readOpenApi } from '../core/flows.js';
 import { escapeHtml, log } from '../core/util.js';
 import { licenseText } from '../config.js';
+import { replaceInWorkspace, searchWorkspace } from '../core/search.js';
+import { checkAll, checkFile } from '../core/problems.js';
+import { saveAttachment } from '../core/attachments.js';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const hostOf = (value) => String(value ?? '').replace(/:\d+$/, '').toLowerCase();
@@ -16,6 +19,7 @@ const isLocalHost = (req) => LOCAL_HOSTS.has(hostOf(req.headers.host));
 
 /** How many files and folders the file tree lists at most. */
 const TREE_SHOWN = 1500;
+const QUICK_OPEN_PATHS = 20000;
 
 /**
  * The server can read and write files, so it only talks to this machine:
@@ -82,8 +86,6 @@ const callbackPage = (title, detail, ok) => `<!doctype html><meta charset="utf-8
 <p style="margin:0;color:#666">${detail}</p>
 </div></div></body>`;
 
-const ATTACH_DIR = 'attachments';
-const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024; // as base64 this still fits the 4 MB JSON limit
 
 export function apiRouter(engine) {
   const { workspace, crew, dispatcher, orchestrator, memory, bus, runner, keys, hiring, git, mcp, connectors, triggers, flows, credentials, skills, journal } = engine;
@@ -120,6 +122,37 @@ export function apiRouter(engine) {
 
   api.get('/file', wrap(async (req, res) => res.json(await workspace.readFile(req.query.path))));
 
+  // Quick open (Ctrl+P): every file's path, further than the tree lists.
+  api.get('/files/paths', wrap(async (_req, res) => {
+    const all = await workspace.tree({ maxEntries: QUICK_OPEN_PATHS + 1, maxDepth: 20 });
+    res.json({ paths: all.filter((e) => e.type === 'file').slice(0, QUICK_OPEN_PATHS).map((e) => e.path), truncated: all.length > QUICK_OPEN_PATHS });
+  }));
+
+  // Search and replace across the folder (src/core/search.js).
+  const searchOptions = (src) => ({
+    query: String(src.q ?? src.query ?? ''),
+    regex: src.regex === true || src.regex === '1',
+    matchCase: src.case === true || src.case === '1',
+    wholeWord: src.word === true || src.word === '1',
+    include: String(src.include ?? ''),
+    exclude: String(src.exclude ?? ''),
+  });
+  api.get('/search', wrap(async (req, res) => res.json(await searchWorkspace(workspace, searchOptions(req.query)))));
+  api.post(
+    '/search/replace',
+    wrap(async (req, res) => {
+      const body = req.body ?? {};
+      if (typeof body.replace !== 'string') return res.status(400).json({ error: '"replace" must be a string' });
+      // Only the files the user saw in the results, when it says which: never a surprise beyond them.
+      const paths = Array.isArray(body.paths) ? body.paths.filter((p) => typeof p === 'string').slice(0, 5000) : undefined;
+      res.json(await replaceInWorkspace(workspace, { ...searchOptions(body), paths }, body.replace));
+    }),
+  );
+
+  // Syntax problems (src/core/problems.js): one file, or the whole folder.
+  api.get('/problems', wrap(async (req, res) => res.json({ problems: await checkFile(workspace, String(req.query.path ?? '')) })));
+  api.post('/problems/scan', wrap(async (_req, res) => res.json(await checkAll(workspace))));
+
   api.put(
     '/file',
     wrap(async (req, res) => {
@@ -140,16 +173,8 @@ export function apiRouter(engine) {
     '/attach',
     wrap(async (req, res) => {
       const { name, data } = req.body ?? {};
-      const safe = String(name ?? '').replace(/[^\w.\- ]+/g, '_').replace(/^[. ]+/, '').slice(-80).trim();
-      if (!safe || typeof data !== 'string') return res.status(400).json({ error: 'An attachment needs a name and its contents' });
-      const bytes = Buffer.from(data, 'base64');
-      if (!bytes.length) return res.status(400).json({ error: `"${safe}" is empty` });
-      if (bytes.length > MAX_ATTACHMENT_BYTES) return res.status(413).json({ error: `"${safe}" is larger than 2 MB` });
-      const dot = safe.lastIndexOf('.');
-      const [stem, ext] = dot > 0 ? [safe.slice(0, dot), safe.slice(dot)] : [safe, ''];
-      let rel = `${ATTACH_DIR}/${safe}`;
-      for (let n = 2; await workspace.exists(rel); n++) rel = `${ATTACH_DIR}/${stem}-${n}${ext}`;
-      res.status(201).json({ ...(await workspace.writeFile(rel, bytes, { owner: 'user', timeoutMs: 1500 })), bytes: bytes.length });
+      if (typeof data !== 'string') return res.status(400).json({ error: 'An attachment needs a name and its contents' });
+      res.status(201).json(await saveAttachment(workspace, name, Buffer.from(data, 'base64')));
     }),
   );
 
@@ -252,7 +277,7 @@ export function apiRouter(engine) {
   api.get('/memory', wrap(async (_req, res) => res.json({ content: await memory.read() })));
 
   api.post('/task', (req, res) => {
-    const run = orchestrator.start(req.body?.text, { source: 'ui', attachments: req.body?.attachments, shell: req.body?.shell === true });
+    const run = orchestrator.start(req.body?.text, { source: 'ui', attachments: req.body?.attachments, shell: req.body?.shell === true, answered: req.body?.answered === true });
     res.status(202).json({ runId: run.id, queued: run.queued });
   });
   api.delete('/queue/:id', (req, res) => res.json({ removed: orchestrator.cancel(req.params.id) }));
@@ -352,6 +377,24 @@ export function apiRouter(engine) {
   api.post('/exec/:id/approve', (req, res) => res.json({ ok: runner.approve(req.params.id) }));
   api.post('/exec/:id/deny', (req, res) => res.json({ ok: runner.deny(req.params.id) }));
   api.post('/exec/:id/kill', (req, res) => res.json({ ok: runner.kill(req.params.id) }));
+
+  // The real terminal (src/core/pty.js): the operator's own shell, from this dashboard only.
+  const { terminals } = engine;
+  api.get('/pty', wrap(async (_req, res) => res.json(await terminals.status())));
+  api.post('/pty', wrap(async (req, res) => res.status(201).json(await terminals.open({ cols: req.body?.cols, rows: req.body?.rows, dir: String(req.body?.dir ?? '') }))));
+  api.post('/pty/:id/input', wrap(async (req, res) => {
+    terminals.write(req.params.id, req.body?.data);
+    res.json({ ok: true });
+  }));
+  api.post('/pty/:id/resize', wrap(async (req, res) => {
+    terminals.resize(req.params.id, req.body?.cols, req.body?.rows);
+    res.json({ ok: true });
+  }));
+  api.get('/pty/:id/replay', wrap(async (req, res) => res.json({ data: terminals.replay(req.params.id) })));
+  api.delete('/pty/:id', wrap(async (req, res) => {
+    terminals.close(req.params.id);
+    res.json({ ok: true });
+  }));
 
   api.use((_req, res) => res.status(404).json({ error: 'Unknown API route' }));
   return api;

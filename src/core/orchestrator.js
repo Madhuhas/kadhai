@@ -7,6 +7,7 @@ import * as prompts from './prompts.js';
 import { clip, log } from './util.js';
 import { COOK_FOR_LEVEL, ESCALATION_COOK, FIX_COOK } from './crew.js';
 import { groupOf } from './connectors/google.js';
+import { readDocument } from './fileText.js';
 
 /** Run errors that come from the providers (limits, budget), not from the work: never a lesson. */
 const PROVIDER_ERRORS = new Set(['BUDGET', 'EXHAUSTED', 'NO_PROVIDERS', 'RATE_LIMITED']);
@@ -33,6 +34,8 @@ const MAX_REQUEST_CHARS = 20000;
 const LISTED_FILES = 80;
 const MAX_TOOLS_IN_PROMPT = 40;
 const MAX_ATTACHMENTS = 5;
+const MAX_CONVERT_BYTES = 10 * 1024 * 1024; // the largest PDF, Office file or image read into text
+const READS_KEPT = 50; // files remembered as read (fileText.js), so each version is read once
 const MAX_VERIFY = 1000; // characters of the plan's check command: a longer one is dropped, never cut
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
@@ -62,6 +65,7 @@ export class Orchestrator {
     this.runner = runner;
     this.checkpoints = checkpoints;
     this.chat = [];
+    this.reads = new Map(); // "<path> <size> <mtime>" -> what #readBinary made of that version of the file
     this.runs = []; // finished runs that changed files, oldest first
     this.queue = [];
     this.current = null;
@@ -125,7 +129,7 @@ export class Orchestrator {
    * Submit a task. It starts now, or joins the queue if the crew is busy.
    * `run.done` resolves with the result when the run eventually finishes; it never rejects.
    */
-  start(request, { source = 'ui', attachments = [], cook, tools, shell = false } = {}) {
+  start(request, { source = 'ui', attachments = [], cook, tools, shell = false, answered = false } = {}) {
     if (request != null && typeof request !== 'string') throw fail('The task must be text', 400);
     const typed = String(request ?? '').trim();
     if (!typed) throw fail('The task is empty', 400);
@@ -139,6 +143,7 @@ export class Orchestrator {
     const run = {
       id: crypto.randomUUID().slice(0, 8),
       request: text,
+      typed, // without the "Attached:" line: what the Chef's questions are sent back with
       source,
       attachments: attached,
       // A flow step may pin who cooks and which connections may be used; the plan is still the Chef's.
@@ -148,6 +153,9 @@ export class Orchestrator {
       queued: false,
       // High flame, typed in the dashboard only: CLI agents may run their own commands in their copy of the folder.
       shell: shell === true && source === 'ui',
+      // The Chef may ask before planning only someone who is there to answer, and only once: the
+      // answers come back as a new task (the request plus them) that may not be asked about again.
+      canAsk: source === 'ui' && answered !== true,
     };
     run.done = new Promise((resolve) => {
       run.finish = resolve;
@@ -226,10 +234,15 @@ export class Orchestrator {
     const spentBefore = this.crew.tokensUsed();
 
     try {
+      // The Chef plans with memory.md in front of it: the last run's objective there is read as this one's
+      // (seen: "how is the weather in kc" planned as Chennai, the city asked about one run before).
+      await this.memory.set({ objective: `New request: ${clip(run.request, 160)}` });
       const plan = await this.#plan(run, signal);
       result = plan.subtasks.length
         ? await this.#cook(run, plan, signal)
-        : { ...result, ok: true, reply: plan.reply || 'Nothing to do for that request.' };
+        : plan.ask.length
+          ? { ...result, ok: true, reply: plan.reply || 'A few questions first, so the crew builds the right thing:', ask: plan.ask }
+          : { ...result, ok: true, reply: plan.reply || 'Nothing to do for that request.' };
     } catch (err) {
       result.reply = signal.aborted ? 'Run stopped by operator.' : `[!] ${err.message}`;
       result.error = err.code ?? 'ERROR';
@@ -249,7 +262,8 @@ export class Orchestrator {
     this.current = null;
     this.crew.settle();
     // What a run cost is kept in the journal; the chat shows usage live in the dashboard's usage bar instead.
-    this.say('manager', result.reply, { runId: run.id, ok: result.ok });
+    // Questions travel with the message, and so does the request they are about: the answers are sent back with it.
+    this.say('manager', result.reply, { runId: run.id, ok: result.ok, ...(result.ask ? { ask: result.ask, request: run.typed, attachments: run.attachments } : {}) });
     this.bus.publish('run:done', result);
     this.bus.publish('runs:update', { runs: this.runsView() });
 
@@ -357,8 +371,18 @@ export class Orchestrator {
   // ---------------------------------------------------------------- planning
 
   async #plan(run, signal) {
-    // What the user attached is read once, up front: no round trip to ask for it.
-    const attached = await this.#gather(run.attachments ?? []);
+    // What the user attached is read once, up front: no round trip to ask for it. A PDF, an Office
+    // file or an image is turned into text first, and the user is told how each one was read.
+    const attached = await this.#gather(run.attachments ?? [], { run, signal });
+    const converted = attached.filter((f) => f.converted);
+    if (converted.length) {
+      const line = (f) => {
+        const seen = f.seen ? `, ${f.seen === 1 ? 'its picture' : `${f.seen} pictures`} written down by a model that can see (${f.seen === 1 ? 'one call' : `${f.seen} calls`})` : '';
+        if (!f.problem) return `- **${f.path}**: ${f.converted}, read${seen}`;
+        return f.read ? `- **${f.path}**: ${f.converted}, read in part${seen}. Not read: ${f.problem}` : `- **${f.path}**: not read - ${f.problem}`;
+      };
+      this.say('manager', `The attachments that are not plain text:\n${converted.map(line).join('\n')}`, { runId: run.id });
+    }
     let extra = [];
     let nudge = '';
     let history = ''; // filled once, if the Chef asks to look into the journal
@@ -366,7 +390,7 @@ export class Orchestrator {
     for (let attempt = 0; ; attempt++) {
       const out = await this.crew.call('general-manager', {
         task: attempt ? 'Refining the plan' : 'Planning the task',
-        system: prompts.managerSystem(this.limits.maxSubtasks, this.runner.enabled ? this.runner.shellName : false, this.crew.specialists(), this.mcp?.groups?.() ?? [], hasJournal, (this.limits.parallelCooks ?? 1) > 1),
+        system: prompts.managerSystem(this.limits.maxSubtasks, this.runner.enabled ? this.runner.shellName : false, this.crew.specialists(), this.mcp?.groups?.() ?? [], hasJournal, (this.limits.parallelCooks ?? 1) > 1, run.canAsk),
         user: async () =>
           prompts.managerUser({
             memory: await this.memory.read(),
@@ -390,10 +414,13 @@ export class Orchestrator {
           continue;
         }
         // Still prose: treat it as a direct answer rather than failing the run.
-        return { objective: '', reply: out.text.trim(), subtasks: [], verify: '' };
+        return { objective: '', reply: out.text.trim(), ask: [], subtasks: [], verify: '' };
       }
 
       const plan = this.#sanitizePlan(raw, run.pin);
+      // Questions are only for someone who can answer them, and they replace the plan: nothing is cooked yet.
+      if (!run.canAsk) plan.ask = [];
+      if (plan.ask.length) plan.subtasks = [];
       // A question about earlier work: look it up once, then let the Chef answer from what was found.
       if (hasJournal && !plan.subtasks.length && plan.needHistory && !history && attempt < 2) {
         history = this.journal.describe(this.journal.search(`${plan.needHistory} ${run.request}`));
@@ -459,6 +486,13 @@ export class Orchestrator {
     return {
       objective: clip(String(raw.objective ?? '').trim(), 200),
       reply: String(raw.reply ?? '').trim(),
+      ask: (Array.isArray(raw.ask) ? raw.ask : [])
+        .map((q) => ({
+          question: clip(String(q?.question ?? '').trim(), 160),
+          options: [...new Set((Array.isArray(q?.options) ? q.options : []).map((o) => clip(String(o ?? '').trim(), 80)).filter(Boolean))].slice(0, prompts.MAX_ASK_OPTIONS),
+        }))
+        .filter((q) => q.question && q.options.length >= 2)
+        .slice(0, prompts.MAX_ASK),
       needFiles: this.#paths(raw.need_files, 6),
       needHistory: clip(String(raw.need_history ?? '').trim(), 200),
       subtasks,
@@ -493,6 +527,8 @@ export class Orchestrator {
     const runSubtask = async (index, subtask) => {
       signal.throwIfAborted();
       subtask.shell = run.shell;
+      // A CLI agent may search the web only for a task the operator typed: never for a flow, a trigger, MCP or ACP.
+      subtask.web = run.source === 'ui';
       mark(index, 'working');
       let outcome = await this.#asCook(subtask.cook, () => this.#subtask(objective, subtask, subtask.cook, signal));
       // A dish a cook could not finish goes up the line - once (to the Senior Cook, or its stand-in when it is switched off).
@@ -592,6 +628,10 @@ export class Orchestrator {
         milestone: `Finished "${objective}": ${done}/${total} sub-tasks ok${verification?.ran ? `, verify ${verification.ok ? 'passed' : 'FAILED'}` : ''}${files.length ? `; files: ${files.join(', ')}` : ''}`,
       });
 
+      // A question answered by looking something up: the answer is the reply, not a work report.
+      if (done === total && !files.length && !verification && run.plan.subtasks.every((s) => !s.files.length && s.summary)) {
+        return { runId: run.id, ok: true, reply: run.plan.subtasks.map((s) => s.summary).join('\n\n'), changed: [] };
+      }
       const lines = [
         `**${objective}**`,
         ...run.plan.subtasks.map((s, i) => `${s.status === 'done' ? '[x]' : s.status === 'skipped' ? '[-]' : '[!]'} ${i + 1}. ${s.title}: ${s.summary}`),
@@ -685,12 +725,41 @@ export class Orchestrator {
   }
 
   /** Run the plan's verification command on behalf of the Taster. */
+  /**
+   * Why a check cannot work at all, before it runs. Seen: "npm test --silent" planned for a folder whose
+   * package.json has no test script - it failed with no output, the Taster invented causes for it
+   * ("rounding errors"), and the Fixer changed code that was already right.
+   */
+  async #cannotCheck(command) {
+    const m = /^\s*npm\s+(?:(test|t)\b|run(?:-script)?\s+([\w:.-]+))/.exec(command);
+    if (!m) return null;
+    const script = m[2] ?? 'test';
+    let scripts = {};
+    try {
+      scripts = JSON.parse((await this.workspace.readFile('package.json')).content).scripts ?? {};
+    } catch {
+      return 'there is no readable package.json';
+    }
+    return scripts[script] ? null : `package.json has no "${script}" script`;
+  }
+
   async #verify(command, signal) {
+    const reason = await this.#cannotCheck(command);
+    if (reason) return { command, ran: false, ok: false, text: `not run: ${reason}` };
     this.crew.setState('head-chef', 'working', `Verifying: ${clip(command, 70)}`);
     try {
       const run = await this.runner.run(command, { owner: 'head-chef', signal });
-      const text = `exit code ${run.code}${run.timedOut ? ' (timed out)' : ''}\n${run.output || '(no output)'}`;
+      const silent = run.code !== 0 && !run.output?.trim() ? '(no output: a check that fails without saying anything may itself be wrong - do not guess at causes in the code)' : '(no output)';
+      const text = `exit code ${run.code}${run.timedOut ? ' (timed out)' : ''}\n${run.output || silent}`;
       this.crew.think('head-chef', `\n$ ${command}\n${clip(text, 600)}\n`);
+      // An inline check that crashed in its own code proves nothing about the work (seen: execSync(..., 'utf8')
+      // returned a Buffer, ".trim is not a function", and three agents ran it five times "fixing" right code).
+      // Only a crash whose first frame is the check itself; an assertion or a thrown Error there is a real result.
+      const crash = run.code !== 0 && /^\s*node\s+(-e|--eval|-p|--print)\b/.test(command) ? /^((?:Syntax|Reference|Type)Error: .*)\n\s+at [^\n]*\[eval\]/m.exec(run.output ?? '') : null;
+      // But a TypeError in a check that loads the folder's own code ("require('./calc').add is not a function")
+      // is most often that code's fault - a missing export - and must stay a real failure (found in a review).
+      const ownCode = /\b(?:require|import)\s*\(\s*['"`]\.{1,2}\//.test(command);
+      if (crash && !(ownCode && crash[1].startsWith('TypeError'))) return { command, ran: false, ok: false, text: `not run: the check command itself crashed (${clip(crash[1], 160)})` };
       return { command, ran: true, ok: run.code === 0, text };
     } catch (err) {
       if (signal.aborted) throw err;
@@ -729,6 +798,7 @@ export class Orchestrator {
         user: prompts.agentUser({ memory: await this.memory.read(), objective, subtask, lessons: this.journal?.lessonsFor(cook) ?? [], recall: this.journal?.recallFiles(subtask.files) ?? [] }),
         dir,
         shell: Boolean(subtask.shell),
+        web: subtask.web === true,
         signal,
       });
       if (!out) return null;
@@ -816,6 +886,10 @@ export class Orchestrator {
     let writes = 0; // every file written or deleted in this step: a command run again after one is not a repeat
     const save = async (file, content) => {
       const fresh = !(await this.workspace.exists(file).catch(() => true));
+      // A cook writes text: a PDF, an Office file or an image it was shown as text is never replaced by that text.
+      if (!fresh && (await this.workspace.readFile(file).then((f) => f.binary, () => false))) {
+        throw Object.assign(new Error(`${file} is not a text file (what you saw was the text read from it), so it was NOT overwritten. Write what you made to a new file.`), { correctable: true });
+      }
       const { path: rel } = await this.workspace.writeFile(file, content, { owner: cook, ...lockOpts });
       if (fresh && !created.includes(rel)) created.push(rel);
       if (!outcome.written.includes(rel)) outcome.written.push(rel);
@@ -832,6 +906,9 @@ export class Orchestrator {
       let strikes = 0; // rounds in a row whose answer had mistakes
       let narrow = false; // whole files only, no look-ups: the breaker's second step
       const served = new Set(); // reads and tool calls already answered in this step
+      // A step with tools and no files is there to look something up: its answer must come from a tool.
+      const mustLook = !subtask.files.length && tools.length > 0;
+      let looked = false;
       for (let round = 0; round <= this.limits.maxToolRounds; round++) {
         const lastRound = round === this.limits.maxToolRounds;
         const out = await this.crew.call(cook, {
@@ -876,7 +953,8 @@ export class Orchestrator {
             problems.push(`the FILE block for ${file.path} had a stray ">>>" on its ${file.stray}, so it was NOT saved. Send the whole file again: <<<FILE ${file.path}>>> on its own line, the content, then <<<END>>> on its own line, with nothing else on those lines.`);
             continue;
           }
-          await save(file.path, file.content).catch((err) => outcome.errors.push(err.message));
+          // A mistake the cook can put right goes back to it; anything else (a lock, the disk) fails the step.
+          await save(file.path, file.content).catch((err) => (err.correctable ? problems : outcome.errors).push(err.message));
         }
         for (const edit of parsed.edits) {
           try {
@@ -942,6 +1020,11 @@ export class Orchestrator {
         const asked = parsed.reads.length + parsed.tools.length + (exec ? parsed.runs.length : 0);
         const requests = narrow ? 0 : asked;
         if (narrow && asked) problems.push('not now: no tools, reads or commands until the files are written');
+        // A look-up step answered from memory is a guess passed off as a fact (seen: "Kansas City: 42°F, partly
+        // cloudy" with the weather tool right there, never called - it was 18°C and raining).
+        if (!requests && !problems.length && mustLook && !looked) {
+          problems.push(`you answered without looking anything up. This step exists to find real, current facts: call ${tools.length === 1 ? tools[0].name : 'one of your tools'} first with a <<<TOOL name>>>{...}<<<END>>> block, then answer from what it returns. Never answer from memory.`);
+        }
         // A cook that answers with words only, when the sub-task exists to produce files, has not done it yet.
         if (!requests && !problems.length && subtask.mustWrite && !outcome.written.length && !outcome.deleted.length) {
           problems.push(`you wrote none of the files this sub-task must produce (${subtask.files.join(', ')}). Send them now, each as a complete <<<FILE path>>> block ending with <<<END>>>${tools.length ? '. If you need information first, call a tool with a <<<TOOL name>>>{...}<<<END>>> block' : ''}.`);
@@ -966,6 +1049,10 @@ export class Orchestrator {
         }
         if (lastRound || (!requests && !problems.length)) {
           outcome.errors.push(...problems);
+          // A look-up step's answer is the point of it: rounds ending on an unanswered look-up is no answer
+          // (seen: four failed web searches, the step ticked done with "searched for the weather" as its summary).
+          // (A look-up step that answered without looking is already in `problems`, above.)
+          if (lastRound && requests && !subtask.files.length) outcome.errors.push('it ran out of rounds before its last look-up was answered');
           break;
         }
         if (problems.length) {
@@ -976,6 +1063,7 @@ export class Orchestrator {
           extra += await this.#fulfil(parsed, cook, signal, exec);
           for (const p of parsed.reads) served.add(readKey(p));
           for (const c of parsed.tools) served.add(toolKey(c));
+          if (parsed.tools.length) looked = true;
           if (exec) for (const c of parsed.runs) served.add(runKey(c));
         }
       }
@@ -1091,15 +1179,18 @@ export class Orchestrator {
   }
 
   /** Read files for a prompt, sharing one character budget between them. */
-  async #gather(paths) {
+  async #gather(paths, { run = null, signal } = {}) {
     if (!paths.length) return [];
     const perFile = Math.max(2000, Math.floor(this.limits.fileContextChars / paths.length));
     const out = [];
     for (const file of paths) {
       try {
         const data = await this.workspace.readFile(file);
-        if (data.binary) out.push({ path: data.path, content: '(binary file)', truncated: true });
-        else {
+        if (data.binary) {
+          const read = await this.#readBinary(data, { run, signal });
+          const truncated = read.content.length > perFile;
+          out.push({ path: data.path, converted: read.label, content: truncated ? read.content.slice(0, perFile) : read.content, truncated, read: read.read, seen: read.seen, problem: read.problem });
+        } else {
           const truncated = data.truncated || data.content.length > perFile;
           out.push({ path: data.path, content: truncated ? data.content.slice(0, perFile) : data.content, truncated });
         }
@@ -1108,5 +1199,69 @@ export class Orchestrator {
       }
     }
     return out;
+  }
+
+  /**
+   * A file that is not text, as text (fileText.js): a PDF or an Office file is read here, with no
+   * model. An image, or a scanned page, is written down by a model that can see - only for a file
+   * the user attached to this run (`run`), at most limits.imageReads a run. Each version of a file
+   * is read once; one whose pictures were not read is tried again by the next run it is attached to.
+   * -> { label, content, read, seen, problem }
+   */
+  async #readBinary(data, { run, signal }) {
+    const key = `${data.path} ${data.size} ${data.mtime}`;
+    const known = this.reads.get(key);
+    if (known && (!known.unseen || !run)) return known;
+
+    let doc;
+    try {
+      doc = readDocument(data.path, await this.workspace.readBytes(data.path, MAX_CONVERT_BYTES));
+    } catch (err) {
+      doc = { format: 'file', text: '', images: [], problem: err.message };
+    }
+    const label = doc.pages > 1 ? `${doc.format}, ${doc.pages} ${doc.format === 'PowerPoint deck' ? 'slides' : 'pages'}` : doc.format;
+    const parts = doc.text ? [doc.text] : [];
+    let problem = doc.text ? null : (doc.problem ?? null);
+    let seen = 0;
+    let unseen = 0;
+
+    for (const [i, image] of doc.images.entries()) {
+      if (!run) {
+        unseen = doc.images.length;
+        problem = 'it is a picture, and pictures are read only when attached in the chat';
+        break;
+      }
+      if ((run.imageReads ?? 0) >= this.limits.imageReads) {
+        unseen = doc.images.length - i;
+        problem = `${unseen === 1 ? 'one picture was' : `${unseen} pictures were`} not read: a run reads at most ${this.limits.imageReads} (high flame reads more)`;
+        break;
+      }
+      run.imageReads = (run.imageReads ?? 0) + 1;
+      try {
+        const out = await this.crew.call('general-manager', {
+          task: `Reading ${data.path}${image.page ? `, page ${image.page}` : ''}`,
+          system: prompts.readerSystem(),
+          user: prompts.readerUser(data.path, image.page),
+          images: [{ mime: image.mime, data: image.data.toString('base64') }],
+          maxTokens: this.limits.imageReadTokens,
+          signal,
+        });
+        parts.push(image.page ? `--- page ${image.page} (written down from its picture) ---\n${out.text.trim()}` : out.text.trim());
+        seen += 1;
+      } catch (err) {
+        if (signal?.aborted) throw err;
+        unseen = doc.images.length - i;
+        problem = err.code === 'NO_VISION' ? err.message : `no model could read ${image.page ? 'its pictures' : 'the picture'} (${err.message})`;
+        break;
+      }
+    }
+
+    const text = parts.join('\n\n');
+    const content = [text, problem && `(${text ? 'not everything was read' : 'not read'}: ${problem})`].filter(Boolean).join('\n\n');
+    const result = { label, content, read: Boolean(text), seen, problem, unseen };
+    this.reads.delete(key);
+    this.reads.set(key, result);
+    if (this.reads.size > READS_KEPT) this.reads.delete(this.reads.keys().next().value);
+    return result;
   }
 }

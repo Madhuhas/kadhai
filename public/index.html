@@ -73,6 +73,7 @@
             <button class="menu-item phone-only" type="button" data-proxy="mcp-btn">connect <span class="muted">apps for the crew to use</span></button>
             <button class="menu-item phone-only" type="button" data-proxy="route-pill">providers <span class="muted">which model is in use</span></button>
             <button id="more-layout" class="menu-item phone-only" type="button" data-proxy="layout-btn">unlock layout <span class="muted">show a window full screen</span></button>
+            <button id="palette-btn" class="menu-item" type="button" title="Every command, and any file by name">commands <span class="muted">Ctrl+Shift+P, files: Ctrl+P</span></button>
             <button id="browser-btn" class="menu-item" type="button" title="A page on this computer - the folder's preview, or a dev server - in a tab">browser <span class="muted">open a page in a tab</span></button>
             <button id="bug-btn" class="menu-item" type="button" title="Kadhai is in beta: tell us what went wrong. Opens the bug form on GitHub with your version and setup filled in">report a bug <span class="muted">it helps a lot in beta</span></button>
             <button id="about-btn" class="menu-item" type="button" title="Version, where it runs, what is set up">about <span class="muted">version and settings</span></button>
@@ -118,9 +119,8 @@
         <span class="spacer"></span>
         <button id="file-run" class="btn sm" hidden title="Run this file">Run</button>
         <button id="file-preview" class="btn sm" hidden title="Open in a new tab">Preview</button>
-        <button id="file-edit" class="btn sm" hidden>Edit</button>
-        <button id="file-save" class="btn sm primary" hidden>Save</button>
-        <button id="file-cancel" class="btn sm" hidden>Cancel</button>
+        <button id="file-revert" class="btn sm" hidden title="Throw away the unsaved changes">Revert</button>
+        <button id="file-save" class="btn sm primary" hidden title="Save (Ctrl+S)">Save</button>
       </div>
       <div id="file-body" class="stage-body"></div>
 
@@ -173,6 +173,8 @@
       <dialog id="terminal-dialog" class="dialog term-window">
         <div class="panel-head">
           <strong>terminal</strong>
+          <!-- "commands" (below) and one tab per real shell (shell.js) -->
+          <div id="term-tabs" class="term-tabs" role="tablist" aria-label="Terminal views"></div>
           <span class="spacer"></span>
           <button id="term-size" class="icon-btn" title="Larger or smaller" aria-label="Make the terminal larger or smaller" type="button">[]</button>
           <button id="term-close" class="icon-btn" title="Close" type="button">&times;</button>
@@ -188,6 +190,7 @@
             </div>
           </form>
         </section>
+        <div id="shell-views" class="shell-views" hidden></div>
       </dialog>
     </main>
 
@@ -203,6 +206,15 @@
         <button id="refresh-files" class="icon-btn wide" title="Refresh" aria-label="Refresh the file list">reload</button>
         <button id="files-max" class="icon-btn win-max" data-win="files" type="button" hidden>[]</button>
       </div>
+      <!-- The three views of this window: the files, search across them, and their problems (search.js). -->
+      <div class="side-tabs" role="tablist" aria-label="Files window views">
+        <button id="side-tab-files" class="side-tab active" type="button" role="tab" aria-selected="true" aria-controls="side-files" data-side="files">files</button>
+        <button id="side-tab-search" class="side-tab" type="button" role="tab" aria-selected="false" aria-controls="side-search" data-side="search" title="Search in all files (Ctrl+Shift+F)">search</button>
+        <button id="side-tab-problems" class="side-tab" type="button" role="tab" aria-selected="false" aria-controls="side-problems" data-side="problems" title="Syntax problems in the folder">problems<span id="problems-count" class="badge err" hidden></span></button>
+      </div>
+      <section id="side-search" class="side-view" role="tabpanel" aria-labelledby="side-tab-search" hidden></section>
+      <section id="side-problems" class="side-view" role="tabpanel" aria-labelledby="side-tab-problems" hidden></section>
+      <div id="side-files" class="side-view" role="tabpanel" aria-labelledby="side-tab-files">
       <button id="folder-btn" class="folder-btn" title="Open a different folder">
         <span class="folder-icon">~/</span>
         <span id="folder-name" class="folder-name">workspace</span>
@@ -221,6 +233,7 @@
       <div id="locks-wrap" hidden>
         <div class="panel-head sub"><span>Locked by the crew</span></div>
         <ul id="locks" class="locks"></ul>
+      </div>
       </div>
     </aside>
   </div>

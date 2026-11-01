@@ -21,6 +21,10 @@ export class ProviderError extends Error {
  * model with 400 - so a 400 is read by what it says, not just its number.
  */
 export function classify(status, body = '') {
+  // "You have no remaining credits" (Hugging Face): no use trying again for a while.
+  if (status === 402) return 'no_credit';
+  // NVIDIA answers 410 for a model it has retired (glm-5.3, kimi-k3, 2026-10-30): as gone as a 404.
+  if (status === 410) return 'not_found';
   // Groq also answers 429 when one request asks for more than the model's per-minute allowance:
   // waiting cannot help that request, so it goes to the next route with no cooldown.
   if (status === 429) return /request too large/i.test(body) ? 'too_large' : 'rate_limit';
@@ -106,7 +110,8 @@ async function send(route, req, body, { signal, onDelta, timeoutMs }) {
   if (signal?.aborted) onAbort();
   signal?.addEventListener('abort', onAbort, { once: true });
 
-  // Idle timeout: re-armed on every chunk, so slow-but-alive streams survive.
+  // Idle timeout: re-armed on every chunk, so slow-but-alive streams survive. It is not shorter before the
+  // first byte: Gemini sends its headers only once it has finished thinking (7 s for a small plan, measured).
   let timedOut = false;
   let timer;
   const arm = () => {
@@ -210,12 +215,21 @@ async function send(route, req, body, { signal, onDelta, timeoutMs }) {
   }
 }
 
+/** The messages with the request's images ([{ mime, data: base64 }]) put on the last user message, as image parts. */
+function withImages(messages, images) {
+  const at = images?.length ? messages.findLastIndex((m) => m.role === 'user') : -1;
+  if (at < 0) return messages;
+  const out = [...messages];
+  out[at] = { ...out[at], content: [{ type: 'text', text: out[at].content }, ...images.map((image) => ({ type: 'image_url', image_url: { url: `data:${image.mime};base64,${image.data}` } }))] };
+  return out;
+}
+
 /** One streaming chat completion against one route. Throws ProviderError on any failure. */
 export async function chatCompletion(route, req, opts = {}) {
   // What this route turned out not to accept, learned the first time it said so (see below).
   const quirks = (route.quirks ??= {});
   const build = () => {
-    const body = { model: route.model, messages: req.messages, stream: true };
+    const body = { model: route.model, messages: withImages(req.messages, req.images), stream: true };
     if (!quirks.noTemperature) body.temperature = req.temperature ?? 0.2;
     body[quirks.completionTokens ? 'max_completion_tokens' : 'max_tokens'] = req.maxTokens;
     if (!quirks.bare) body.stream_options = { include_usage: true };

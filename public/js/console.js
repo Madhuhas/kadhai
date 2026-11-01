@@ -3,6 +3,7 @@ import { BANNER, face, spinner, tintOf } from './ascii.js';
 import { state, on, emit } from './store.js';
 import { api } from './api.js';
 import { colourLine } from './terminal.js';
+import { JOB_STARTERS, useStarter } from './starters.js';
 
 const EXEC_DOM_CAP = 20000;
 const CHAT_DOM_CAP = 200; // messages kept on screen, as many as the server keeps
@@ -133,7 +134,68 @@ function messageEl(message) {
     { class: `msg ${message.role}${failed ? ' fail' : ''}${fromManager ? ' tinted' : ''}`, style: fromManager ? tintOf(MANAGER) : null, dataset: message.role === 'manager' && message.runId ? { run: message.runId } : {} },
     h('span', { class: 'who' }, who),
     h('div', { innerHTML: mdLite(message.text) }),
+    fromManager && Array.isArray(message.ask) && message.ask.length ? askCard(message) : null,
   );
+}
+
+/**
+ * The Chef's questions before it plans: one click per question (or your own words), then Build it.
+ * The answers go back as a new task - the request plus them - which the Chef may not ask about again.
+ */
+function askCard(message) {
+  const picked = message.ask.map(() => '');
+  const answered = () => state.chat.some((m) => m.role === 'user' && m.ts > message.ts);
+  const build = button('Build it', '', () => send(false));
+  const skip = button('Skip, you choose', '', () => send(true));
+  const rows = message.ask.map((q, i) => {
+    const own = h('input', { class: 'ask-own', type: 'text', placeholder: 'or your own answer', ariaLabel: `Your own answer: ${q.question}`, maxLength: 200 });
+    const chips = q.options.map((option) =>
+      h('button', { class: 'chip', type: 'button', ariaPressed: 'false', onclick: () => choose(option) }, option),
+    );
+    function choose(option) {
+      picked[i] = picked[i] === option ? '' : option;
+      own.value = '';
+      for (const chip of chips) {
+        const on = chip.textContent === picked[i];
+        chip.classList.toggle('on', on);
+        chip.setAttribute('aria-pressed', String(on));
+      }
+    }
+    own.addEventListener('input', () => {
+      picked[i] = own.value.trim();
+      for (const chip of chips) {
+        chip.classList.remove('on');
+        chip.setAttribute('aria-pressed', 'false');
+      }
+    });
+    own.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        send(false);
+      }
+    });
+    return h('fieldset', { class: 'ask-q' }, h('legend', null, q.question), h('div', { class: 'ask-options' }, ...chips), own);
+  });
+  const card = h('div', { class: 'ask-card' }, ...rows, h('div', { class: 'run-actions' }, build, skip));
+  const lock = () => {
+    for (const el of card.querySelectorAll('button, input')) el.disabled = true;
+    card.classList.add('done');
+  };
+  async function send(skipped) {
+    const lines = message.ask.map((q, i) => `- ${q.question} ${picked[i] || '(you choose)'}`);
+    const text = skipped || !picked.some(Boolean) ? `${message.request}\n\nNo preferences: choose sensible defaults.` : `${message.request}\n\nMy answers:\n${lines.join('\n')}`;
+    lock();
+    try {
+      // The attachments go back with it, so the Chef reads them again (the request only names them).
+      if ((await api.task(text, Array.isArray(message.attachments) ? message.attachments : [], false, true)).queued) toast('Queued. It starts when the current task finishes');
+    } catch (err) {
+      for (const el of card.querySelectorAll('button, input')) el.disabled = false;
+      card.classList.remove('done');
+      toast(err.message, 'err');
+    }
+  }
+  if (answered() || !message.request) lock();
+  return card;
 }
 
 /** Give each finished run's report its "View changes" / "Undo" buttons. */
@@ -175,6 +237,10 @@ function welcome() {
     h('div', null, h('b', null, 'What should we cook?'), 'Type what you want built in the box below. The crew plans it, writes it and checks it, and you can watch them in the kitchen.'),
     h('div', { class: 'tip' }, 'Tip: start a line with ', h('code', null, '!'), ' to run a shell command yourself.'),
     notice && h('div', { class: 'notice' }, h('span', null, notice), button('Add API keys', 'primary', () => emit('openkeys')), !app.mock && button('Try the demo', '', () => emit('trydemo'))),
+    // Looking for a job: ready-made requests (starters.js). Each fills in the box; nothing is sent by itself.
+    h('div', { class: 'starters' },
+      h('div', { class: 'section-label' }, 'looking for a job?'),
+      h('div', { class: 'starter-list' }, ...JOB_STARTERS.map((s) => h('button', { class: 'starter', type: 'button', title: s.hint, onclick: () => useStarter(s) }, h('span', null, s.label), h('span', { class: 'muted' }, s.hint))))),
   );
 }
 

@@ -13,6 +13,7 @@ import { CLI_AGENTS } from './cliProvider.js';
 import { Crew } from './crew.js';
 import { Orchestrator } from './orchestrator.js';
 import { Runner } from './runner.js';
+import { Terminals } from './pty.js';
 import { Checkpoints } from './checkpoints.js';
 import { StateStore } from './stateStore.js';
 import { createKeyService } from './keys.js';
@@ -21,6 +22,7 @@ import { log } from './util.js';
 import { Repo } from './git.js';
 import { GoogleConnector, Toolbox } from './connectors/google.js';
 import { describeConnection } from './connectors/catalog.js';
+import { LOOKUP_ABOUT, LookupConnector } from './connectors/lookup.js';
 import { loadAgentAccess, loadAgentSettings, loadCustomAgents, saveCustomAgents } from './customAgents.js';
 import { MAX_OWN_SKILLS, cleanSkill, deleteSkill, loadSkills, slug, writeSkill } from './skills.js';
 import { Triggers } from './triggers.js';
@@ -146,6 +148,8 @@ export async function createEngine(overrides = {}) {
   const mcp = new McpHub({ configPath: config.mcpConfigPath, bus, version: config.version });
   const runner = new Runner({ cwd: config.workspaceDir, bus, limits: config.limits, interactive: config.interactive });
   await runner.init();
+  // The operator's own shell, dashboard only (pty.js); a test hands in its own spawn.
+  const terminals = new Terminals({ bus, workspace, runner, enabled: config.interactive || Boolean(overrides.ptySpawn), spawn: overrides.ptySpawn });
   const checkpoints = new Checkpoints({ root: config.workspaceDir });
   await checkpoints.init();
   // Connected accounts. Their tools sit beside the MCP ones in a single list for the cooks.
@@ -156,7 +160,7 @@ export async function createEngine(overrides = {}) {
     fetch: overrides.fetch,
   });
   await google.init();
-  const toolbox = new Toolbox([mcp, google], describeConnection);
+  const toolbox = new Toolbox([mcp, google, new LookupConnector({ fetch: overrides.fetch })], (id) => (id === 'lookup' ? LOOKUP_ABOUT : describeConnection(id)));
   // What was done in this folder before, and what was learned from it.
   const journal = new Journal({ dir: path.join(config.workspaceDir, '.kadhai'), enabled: config.journal, bus, now: overrides.now, limits: config.limits });
   await journal.init();
@@ -236,6 +240,7 @@ export async function createEngine(overrides = {}) {
     mcp,
     connectors: { google },
     runner,
+    terminals,
     checkpoints,
     git,
     orchestrator,
@@ -339,6 +344,7 @@ export async function createEngine(overrides = {}) {
       if (config.watchKeys) fs.unwatchFile(config.keysFile, onKeysFile);
       orchestrator.stop();
       runner.killAll();
+      terminals.closeAll();
       await store.flush();
       workspace.close();
       memory.close();

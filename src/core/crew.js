@@ -434,7 +434,7 @@ export class Crew {
    * of the folder). Returns null when no CLI can act in this mode, or when the chosen one could not
    * be used - the caller then falls back to an ordinary call, so failover still holds.
    */
-  async act(id, { system, user, dir, shell = false, task = '', signal }) {
+  async act(id, { system, user, dir, shell = false, web = false, task = '', signal }) {
     const agent = this.get(id);
     await this.#waitWhilePaused(agent, signal);
     const prefer = agent.model && agent.model !== 'light' && agent.model !== 'best' ? agent.model : undefined;
@@ -458,6 +458,7 @@ export class Crew {
         user: user + noteBlock,
         dir,
         shell,
+        web,
         signal,
         timeoutMs: limits.agentTimeoutMs ?? 15 * 60000,
         maxTurns: limits.agentTurns ?? 30,
@@ -486,7 +487,7 @@ export class Crew {
    * `user` may be an async function; it is re-evaluated on every provider
    * attempt so a hot-swapped model starts from the current memory.md.
    */
-  async call(id, { system, user, json = false, task = '', signal, maxTokens }) {
+  async call(id, { system, user, json = false, task = '', signal, maxTokens, images }) {
     const agent = this.get(id);
     await this.#waitWhilePaused(agent, signal);
 
@@ -513,6 +514,7 @@ export class Crew {
         {
           json,
           maxTokens,
+          images, // only a model that can see is given these (Dispatcher.#pick)
           build: async () => [
             { role: 'system', content: system + skills },
             { role: 'user', content: (typeof user === 'function' ? await user() : user) + noteBlock },

@@ -55,7 +55,7 @@ Open a terminal in the Kadhai folder and run:
 npm install
 ```
 
-This installs Kadhai's single dependency. It takes a few seconds.
+This installs Kadhai's dependency, plus the optional one for the real terminal. It takes a few seconds.
 
 ### Try it without an account (demo mode)
 
@@ -99,7 +99,7 @@ To build the installer yourself, see `desktop/README.md`.
 ### Your first real task
 
 1. In the chat on the right, type what you want, for example: *Make a to-do list web page where I can add and tick off items. Keep it in one HTML file.*
-2. Press **Enter**. The Chef writes a plan; you see it as an order ticket in the middle of the screen, with each step and the cook who has it.
+2. Press **Enter**. If the request leaves something open that would change what gets built (*build me a workout plan*: for whom, what kind, how often), the Chef first asks up to three short questions, each with choices you pick with one click, or type your own answer. Press **Build it**, or **Skip, you choose** to let the Chef decide. It asks only once per request, and only in the dashboard: flows, triggers and editors are never held up by a question. Then the Chef writes a plan; you see it as an order ticket in the middle of the screen, with each step and the cook who has it.
 3. If a cook wants to run a command (for example to check its code), a card appears in the chat with the exact command. Press **Run** to allow it or **Deny** to refuse. Nothing runs without your OK unless you change that.
 4. When the run ends, the Chef's report appears in the chat with three buttons: **View changes** (every file that changed, line by line), **Open preview** (the page, in Kadhai's browser tab) and **Undo this run**.
 
@@ -139,7 +139,7 @@ The crew works in the folder shown at the top of the files panel on the left. At
 
 On a phone the taskbar keeps only **kitchens**, **crew**, the flame and **more**; terminal, keys, flows, connect, providers and the layout lock are inside **more**.
 
-Keyboard shortcuts: `Enter` send, `Shift+Enter` new line, `Ctrl+K` jump to the chat box, `Ctrl+S` save the file being edited, `` Ctrl+` `` open the terminal, `Esc` close a dialog or menu, or bring a full-screen window back to its normal size.
+Keyboard shortcuts: `Enter` send, `Shift+Enter` new line, `Ctrl+K` jump to the chat box, `Ctrl+S` save the file in front, `Ctrl+P` open a file by name, `Ctrl+Shift+P` (or `F1`) run any command, `Ctrl+Shift+F` search all files, `` Ctrl+` `` open the terminal, `Esc` close a dialog or menu, or bring a full-screen window back to its normal size.
 
 ### Resizing windows and full screen
 
@@ -175,7 +175,34 @@ You can also ask about earlier work in plain words: *What did we do yesterday?*,
 
 ### Attaching files
 
-Press **+ attach**, or drop or paste files on the chat box. Up to 5 files of 2 MB each are saved into the folder under `attachments/` (never over an existing file) and shown to the Chef with your message. Text files are read; images and other binary files are only saved and named, because most free models read text only.
+Press **+ attach**, or drop or paste files on the chat box. Up to 5 files of 2 MB each are saved into the folder under `attachments/` (never over an existing file) and shown to the Chef with your message. Most free models read text only, so anything that is not text is turned into text first, and the chat tells you how each file was read:
+
+| You attach | How it is read |
+|---|---|
+| Text, code, Markdown, CSV, JSON | As it is |
+| PDF | Its text is read on your computer, with no model call. A scanned page (a picture of a page) is treated like an image. |
+| Word (`.docx`), Excel (`.xlsx`), PowerPoint (`.pptx`), OpenDocument (`.odt`, `.ods`, `.odp`) | Their text, sheet cells and slide text are read on your computer, with no model call. Table rows stay rows. |
+| Images (`.png`, `.jpg`, `.gif`, `.webp`) | A model that can see writes down every word and describes the picture, once. That takes one call per image, up to 3 a run on low flame and 10 on high. Gemini's free key can do this, and so can a Claude key. Without one, the chat says so and nothing is sent. |
+| Old Office files (`.doc`, `.xls`, `.ppt`), zip archives, password-protected PDFs, audio, video | Not read. The chat says why and what to do instead, such as saving as `.docx` or pasting the text. |
+
+The crew uses what was read, and the file itself stays as it is: a cook never writes over a PDF or an image.
+
+### Looking for a job
+
+The empty chat (and the command palette, under *Job hunt*) offers ready-made requests. Each fills in the chat box with the part for you to type selected; nothing is sent until you press Send.
+
+| Starter | What you get |
+|---|---|
+| Set up my job profile | `job-profile.md`, from your attached resume: the roles you fit, your skills, where you want to work. The job alerts read it. |
+| Tailor my resume to a job | A printable one-page resume for that job (`resume-<company>.html`), and `notes-<company>.md`: what changed and why, and which requirements you do not meet, with how to prepare. Nothing is invented: it rewords, reorders and chooses what to stress. |
+| Write a cover letter | Under 300 words, only facts from your resume, as a printable page. |
+| Build my portfolio site | A one-page website from your resume. |
+| Practice for a coding interview | Problems with tests and no answers; ask the crew to check yours. |
+| Prepare for an interview | The likely questions for one job, what a strong answer covers, and questions to ask them. |
+| Track my applications | A page on your computer that keeps your list, with counts and a CSV export. |
+| Get job alerts every morning | Opens a flow: your profile, then new postings from We Work Remotely, Himalayas and Jobicy, filtered by a model, sent to your phone through ntfy and kept in `jobs/alerts.md`. Fill in the phone topic and press Create. |
+
+Print a resume or letter with the browser's *Save as PDF* (open it with **Preview**). Read everything before you send it: free models make mistakes. The skills *Resume tailoring*, *Cover letters* and *Interview practice* hold the same rules for any agent you give them to.
 
 ### While it runs
 
@@ -304,7 +331,7 @@ The **flame** in the taskbar sets how much the crew may use per call. Any key wo
 
 Every number is still a hard limit on both flames.
 
-**CLI agents (high flame).** A step can be done by a subscription CLI working with its own tools, on a temporary copy of your folder. Each changed file comes back into your folder through Kadhai, under that cook's name, so it can be reviewed and undone like any other change. By default only Claude Code acts this way, with its shell switched off. Tick **agents run commands** beside the chat box to let CLI agents run their own commands for one task; those commands do not wait for your approval and are not sandboxed, so use it only when you trust the task.
+**CLI agents (high flame).** A step can be done by a subscription CLI working with its own tools, on a temporary copy of your folder. Each changed file comes back into your folder through Kadhai, under that cook's name, so it can be reviewed and undone like any other change. By default only Claude Code acts this way, with its shell switched off. On tasks you type in the chat it may also search the web; it is never given a tool that fetches any address, because the copy of your folder holds its secrets (a `.env`, for example) and a page or an issue it read could otherwise have it send them somewhere. Tick **agents run commands** beside the chat box to let CLI agents run their own commands for one task; those commands do not wait for your approval and are not sandboxed, so use it only when you trust the task.
 
 ---
 
@@ -312,7 +339,34 @@ Every number is still a hard limit on both flames.
 
 ### Files
 
-Open a file to see it with syntax highlighting; **Edit** and **Save** (`Ctrl+S`) change it. `.js` and `.py` files have **Run**, `.html` files have **Preview**.
+Click a file and it opens in the editor, ready to type in. Several files can be open at once, each in a tab of its own; a `*` on the tab (and in the file list) means it has unsaved changes, which stay put while you look at other tabs. **Save** (`Ctrl+S`) writes the file, **Revert** throws your changes away. `.js` and `.py` files have **Run**, `.html` files have **Preview**.
+
+The editor keeps the file's own line endings (a Windows file stays Windows) and its indentation (shown in the bar at the bottom, with the line and column; click either to switch it). If the crew changes a file while you have unsaved changes in it, a bar says so and you choose: **Use theirs** or **Keep mine**. Nothing you typed is lost without asking.
+
+| Keys | What they do |
+|---|---|
+| `Ctrl+F`, `Ctrl+H` | Find, and find and replace, in this file (`Aa` match case, `W` whole word, `.*` regular expression) |
+| `Ctrl+G` | Go to a line |
+| `Tab`, `Shift+Tab` | Indent or outdent (the selected lines, if several) |
+| `Ctrl+/` | Comment or uncomment the line or lines |
+| `Alt+Up`, `Alt+Down` | Move the line up or down; with `Shift`, copy it |
+| `Ctrl+Shift+K` | Delete the line |
+| `Ctrl+Enter`, `Ctrl+Shift+Enter` | A new line below or above |
+| `Ctrl+D` | Select the word, then the next place it appears |
+| `Ctrl+L` | Select the line |
+| `Ctrl+Z`, `Ctrl+Y` | Undo and redo: every change, including replace all and moving lines |
+
+Brackets and quotes close themselves, `Enter` keeps the indentation (and adds a step after `{`), and the bracket that pairs with the one at the cursor is outlined.
+
+### Search, quick open and commands
+
+- **Search** (the *search* tab over the file list, or `Ctrl+Shift+F`) looks through every file in the folder. Results are listed by file; click one to open the file at that line. Replace changes every match in the files listed. A file an agent is working on is left alone and named.
+- **Quick open** (`Ctrl+P`): type a few letters of a file's name (`utl` finds `util.js`) and press Enter. `name:12` opens it at line 12.
+- **Commands** (`Ctrl+Shift+P` or `F1`, or **more** -> **commands**): everything the taskbar and menus do, by name: *Theme: Dark*, *Flame: High*, *View: Terminal*, *Crew: Open Chef* and so on.
+
+### Problems
+
+JavaScript and JSON files are checked for syntax errors when you open and save them: the line number turns red, the mistake is underlined, and the bar at the bottom says what is wrong. The *problems* tab lists every problem in the folder (**check the folder** checks them all); **fix** sends a file's problems to the crew as a task. The check only reads the code, it never runs it.
 
 ### Changing folder
 
@@ -320,7 +374,11 @@ Click **[change]** at the top of the files panel to open any folder on your comp
 
 ### Terminal
 
-**terminal** in the taskbar (or `` Ctrl+` ``) opens a terminal in the folder. Type a command and see its output; `cd` moves between sub-folders, the up arrow recalls earlier commands, Tab completes file names. Dev servers keep running: a command ending in ` &`, or a known one such as `npm run dev` or `vite`, has no time limit, and when it prints a local address the browser tab opens it. It runs one command at a time and shows its output; programs that wait for you to type (or full-screen ones like vim) do not work there.
+**terminal** in the taskbar (or `` Ctrl+` ``) opens a terminal in the folder. Type a command and see its output; `cd` moves between sub-folders, the up arrow recalls earlier commands, Tab completes file names. Dev servers keep running: a command ending in ` &`, or a known one such as `npm run dev` or `vite`, has no time limit, and when it prints a local address the browser tab opens it. This *commands* view runs one command at a time and shows its output, and it is also where the crew's commands appear.
+
+For anything that waits for you to type, press **+ shell** in the terminal's title bar: a real shell (PowerShell on Windows, your usual shell elsewhere) opens in the folder, in a tab of its own. Interactive programs work there: `npm init`, `node` or `python` prompts, `git` asking for a message, full-screen programs such as `vim`, colours, `Ctrl+C` to stop, the up arrow for earlier commands. Select text to copy it (`Ctrl+C` copies when something is selected), `Ctrl+V` pastes. Every key goes to the shell except `` Ctrl+` `` (which closes the terminal), `F1` and `Ctrl+Shift+P`. Up to four shells can be open; closing a tab ends that shell and everything started from it, and so does opening another folder or stopping Kadhai. A shell keeps running if you reload the page, and comes back with what it showed.
+
+Good to know: a shell is yours, exactly like one you open on your computer. The crew never types into it, nothing in it asks for approval, and it is not sandboxed (with the Docker sandbox on, **+ shell** is not offered). It needs the `node-pty` package, which `npm install` adds on Windows and macOS; where it cannot be installed, Kadhai works as before with the *commands* view only.
 
 ### Browser
 
@@ -329,6 +387,30 @@ Click **[change]** at the top of the files panel to open any folder on your comp
 ### Source control
 
 Under the files panel: the folder's own git repository. See what changed, click a file for its diff, stage and unstage, discard a change, write a message and **Commit**, switch or create branches, **Pull** and **Push**. If the folder is not a repository yet, one click creates one. This uses your installed git with your own name and sign-in, and never adds commits by itself. Discard, switching branch and pull are refused while a run is in progress.
+
+### In the terminal: the kadhai command
+
+Kadhai also works from a terminal, without the dashboard. Once, in the Kadhai folder:
+
+```bash
+npm link
+```
+
+Then, in any project folder:
+
+| You type | What happens |
+|---|---|
+| `kadhai` | A prompt in this folder. Type what you want built; the plan, each step, the commands and the Chef's answer appear as the crew works. |
+| `kadhai "add a dark mode"` | One task, then it exits: `0` done, `1` not done, `2` could not run. Handy in scripts. |
+| `kadhai "make a site from this" -a resume.pdf` | Attach files, as in the chat (`-a` again for more). |
+| `kadhai --flame high "..."` | High flame for this task. |
+| `kadhai --demo` | Simulated models, no keys needed. |
+
+**Commands still ask first.** When a cook wants to run one, the terminal asks `run it? [y/N]`. `--yes` allows them without asking (only in a folder you trust). Without a terminal to ask in (a script), they are refused, unless the dashboard is open to approve them.
+
+Inside the prompt: `/status` (models, flame, what is running), `/crew`, `/flame low|high`, `/attach <file>` (goes with your next message), `/diff` and `/undo` (the last run), `/stop`, `/quit`. `Ctrl+C` stops a run in progress; on an empty prompt it leaves. When the Chef asks questions before building, you answer each with a number or your own words.
+
+**With the dashboard open.** If Kadhai is already running with this folder open, `kadhai` joins it instead of starting a second crew: the dashboard shows what you asked in the terminal, live, and the other way round, and a command can be approved in either place. Otherwise `kadhai` runs a crew of its own for the folder, with your keys and settings, and stops it when you leave. While it does, the dashboard will not open that same folder (one folder, one crew).
 
 ---
 
@@ -421,6 +503,8 @@ Every step can be switched off, retried up to three times, or told to carry on a
 ### Connections
 
 **connect** opens a catalog of about fifty services the crew can use while it works: web search, a browser, GitHub, Notion, Linear, Slack, databases and more. Press **Connect** on a card. Some run on this computer, some need no account, some ask for a key, some open the service's sign-in page.
+
+One connection is always there without connecting anything: **lookup**, free and read-only, for the current weather and a 3-day forecast, Wikipedia articles, currency conversion and Hacker News stories. Ask *how is the weather in Kansas City?* and the Chef sends a cook to look it up instead of guessing.
 
 - The Chef tells each step which connections it may use (at most three on low flame), so a connection nobody needs costs almost nothing.
 - Anything a cook reads through a connection becomes part of its prompt and is sent to the AI provider in use.

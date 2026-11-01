@@ -2418,6 +2418,13 @@ function onKey(e) {
 export function initFlows() {
   const dialog = $('#flows-dialog');
   const canvas = $('#flow-canvas');
+  // Somewhere else (the chat's job-hunt starters) opens an example: the window, then the drawing, unsaved.
+  on('flowexample', async (id) => {
+    const ex = EXAMPLES.find((e) => e.id === id);
+    if (!ex) return;
+    await $('#flows-btn').onclick();
+    openDraft(ex.flow());
+  });
   $('#flows-btn').onclick = async () => {
     dialog.showModal();
     try {
