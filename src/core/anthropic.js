@@ -61,6 +61,11 @@ export async function anthropicCompletion(route, req, { signal, onDelta, timeout
   // There is no JSON mode to switch on, and no prefill: the instruction does the work, and the reply is parsed tolerantly.
   if (req.json && messages.length) messages[messages.length - 1] = { ...messages.at(-1), content: `${messages.at(-1).content}\n\nReply with the JSON object only: no prose before or after it, no code fence.` };
   const body = { model: route.model, max_tokens: Math.max(req.maxTokens ?? 0, MIN_OUTPUT_TOKENS), stream: true, messages };
+  // Images go before the text of the last message, as Claude's own image blocks.
+  if (req.images?.length && messages.length) {
+    const last = messages.at(-1);
+    body.messages = [...messages.slice(0, -1), { ...last, content: [...req.images.map((image) => ({ type: 'image', source: { type: 'base64', media_type: image.mime, data: image.data } })), { type: 'text', text: last.content }] }];
+  }
   if (system) body.system = system;
 
   const ctrl = new AbortController();

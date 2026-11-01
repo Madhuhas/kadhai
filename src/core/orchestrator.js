@@ -7,6 +7,7 @@ import * as prompts from './prompts.js';
 import { clip, log } from './util.js';
 import { COOK_FOR_LEVEL, ESCALATION_COOK, FIX_COOK } from './crew.js';
 import { groupOf } from './connectors/google.js';
+import { readDocument } from './fileText.js';
 
 /** Run errors that come from the providers (limits, budget), not from the work: never a lesson. */
 const PROVIDER_ERRORS = new Set(['BUDGET', 'EXHAUSTED', 'NO_PROVIDERS', 'RATE_LIMITED']);
@@ -33,6 +34,8 @@ const MAX_REQUEST_CHARS = 20000;
 const LISTED_FILES = 80;
 const MAX_TOOLS_IN_PROMPT = 40;
 const MAX_ATTACHMENTS = 5;
+const MAX_CONVERT_BYTES = 10 * 1024 * 1024; // the largest PDF, Office file or image read into text
+const READS_KEPT = 50; // files remembered as read (fileText.js), so each version is read once
 const MAX_VERIFY = 1000; // characters of the plan's check command: a longer one is dropped, never cut
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
@@ -62,6 +65,7 @@ export class Orchestrator {
     this.runner = runner;
     this.checkpoints = checkpoints;
     this.chat = [];
+    this.reads = new Map(); // "<path> <size> <mtime>" -> what #readBinary made of that version of the file
     this.runs = []; // finished runs that changed files, oldest first
     this.queue = [];
     this.current = null;
@@ -366,8 +370,18 @@ export class Orchestrator {
   // ---------------------------------------------------------------- planning
 
   async #plan(run, signal) {
-    // What the user attached is read once, up front: no round trip to ask for it.
-    const attached = await this.#gather(run.attachments ?? []);
+    // What the user attached is read once, up front: no round trip to ask for it. A PDF, an Office
+    // file or an image is turned into text first, and the user is told how each one was read.
+    const attached = await this.#gather(run.attachments ?? [], { run, signal });
+    const converted = attached.filter((f) => f.converted);
+    if (converted.length) {
+      const line = (f) => {
+        const seen = f.seen ? `, ${f.seen === 1 ? 'its picture' : `${f.seen} pictures`} written down by a model that can see (${f.seen === 1 ? 'one call' : `${f.seen} calls`})` : '';
+        if (!f.problem) return `- **${f.path}**: ${f.converted}, read${seen}`;
+        return f.read ? `- **${f.path}**: ${f.converted}, read in part${seen}. Not read: ${f.problem}` : `- **${f.path}**: not read - ${f.problem}`;
+      };
+      this.say('manager', `The attachments that are not plain text:\n${converted.map(line).join('\n')}`, { runId: run.id });
+    }
     let extra = [];
     let nudge = '';
     let history = ''; // filled once, if the Chef asks to look into the journal
@@ -868,6 +882,10 @@ export class Orchestrator {
     let writes = 0; // every file written or deleted in this step: a command run again after one is not a repeat
     const save = async (file, content) => {
       const fresh = !(await this.workspace.exists(file).catch(() => true));
+      // A cook writes text: a PDF, an Office file or an image it was shown as text is never replaced by that text.
+      if (!fresh && (await this.workspace.readFile(file).then((f) => f.binary, () => false))) {
+        throw Object.assign(new Error(`${file} is not a text file (what you saw was the text read from it), so it was NOT overwritten. Write what you made to a new file.`), { correctable: true });
+      }
       const { path: rel } = await this.workspace.writeFile(file, content, { owner: cook, ...lockOpts });
       if (fresh && !created.includes(rel)) created.push(rel);
       if (!outcome.written.includes(rel)) outcome.written.push(rel);
@@ -931,7 +949,8 @@ export class Orchestrator {
             problems.push(`the FILE block for ${file.path} had a stray ">>>" on its ${file.stray}, so it was NOT saved. Send the whole file again: <<<FILE ${file.path}>>> on its own line, the content, then <<<END>>> on its own line, with nothing else on those lines.`);
             continue;
           }
-          await save(file.path, file.content).catch((err) => outcome.errors.push(err.message));
+          // A mistake the cook can put right goes back to it; anything else (a lock, the disk) fails the step.
+          await save(file.path, file.content).catch((err) => (err.correctable ? problems : outcome.errors).push(err.message));
         }
         for (const edit of parsed.edits) {
           try {
@@ -1156,15 +1175,18 @@ export class Orchestrator {
   }
 
   /** Read files for a prompt, sharing one character budget between them. */
-  async #gather(paths) {
+  async #gather(paths, { run = null, signal } = {}) {
     if (!paths.length) return [];
     const perFile = Math.max(2000, Math.floor(this.limits.fileContextChars / paths.length));
     const out = [];
     for (const file of paths) {
       try {
         const data = await this.workspace.readFile(file);
-        if (data.binary) out.push({ path: data.path, content: '(binary file)', truncated: true });
-        else {
+        if (data.binary) {
+          const read = await this.#readBinary(data, { run, signal });
+          const truncated = read.content.length > perFile;
+          out.push({ path: data.path, converted: read.label, content: truncated ? read.content.slice(0, perFile) : read.content, truncated, read: read.read, seen: read.seen, problem: read.problem });
+        } else {
           const truncated = data.truncated || data.content.length > perFile;
           out.push({ path: data.path, content: truncated ? data.content.slice(0, perFile) : data.content, truncated });
         }
@@ -1173,5 +1195,69 @@ export class Orchestrator {
       }
     }
     return out;
+  }
+
+  /**
+   * A file that is not text, as text (fileText.js): a PDF or an Office file is read here, with no
+   * model. An image, or a scanned page, is written down by a model that can see - only for a file
+   * the user attached to this run (`run`), at most limits.imageReads a run. Each version of a file
+   * is read once; one whose pictures were not read is tried again by the next run it is attached to.
+   * -> { label, content, read, seen, problem }
+   */
+  async #readBinary(data, { run, signal }) {
+    const key = `${data.path} ${data.size} ${data.mtime}`;
+    const known = this.reads.get(key);
+    if (known && (!known.unseen || !run)) return known;
+
+    let doc;
+    try {
+      doc = readDocument(data.path, await this.workspace.readBytes(data.path, MAX_CONVERT_BYTES));
+    } catch (err) {
+      doc = { format: 'file', text: '', images: [], problem: err.message };
+    }
+    const label = doc.pages > 1 ? `${doc.format}, ${doc.pages} ${doc.format === 'PowerPoint deck' ? 'slides' : 'pages'}` : doc.format;
+    const parts = doc.text ? [doc.text] : [];
+    let problem = doc.text ? null : (doc.problem ?? null);
+    let seen = 0;
+    let unseen = 0;
+
+    for (const [i, image] of doc.images.entries()) {
+      if (!run) {
+        unseen = doc.images.length;
+        problem = 'it is a picture, and pictures are read only when attached in the chat';
+        break;
+      }
+      if ((run.imageReads ?? 0) >= this.limits.imageReads) {
+        unseen = doc.images.length - i;
+        problem = `${unseen === 1 ? 'one picture was' : `${unseen} pictures were`} not read: a run reads at most ${this.limits.imageReads} (high flame reads more)`;
+        break;
+      }
+      run.imageReads = (run.imageReads ?? 0) + 1;
+      try {
+        const out = await this.crew.call('general-manager', {
+          task: `Reading ${data.path}${image.page ? `, page ${image.page}` : ''}`,
+          system: prompts.readerSystem(),
+          user: prompts.readerUser(data.path, image.page),
+          images: [{ mime: image.mime, data: image.data.toString('base64') }],
+          maxTokens: this.limits.imageReadTokens,
+          signal,
+        });
+        parts.push(image.page ? `--- page ${image.page} (written down from its picture) ---\n${out.text.trim()}` : out.text.trim());
+        seen += 1;
+      } catch (err) {
+        if (signal?.aborted) throw err;
+        unseen = doc.images.length - i;
+        problem = err.code === 'NO_VISION' ? err.message : `no model could read ${image.page ? 'its pictures' : 'the picture'} (${err.message})`;
+        break;
+      }
+    }
+
+    const text = parts.join('\n\n');
+    const content = [text, problem && `(${text ? 'not everything was read' : 'not read'}: ${problem})`].filter(Boolean).join('\n\n');
+    const result = { label, content, read: Boolean(text), seen, problem, unseen };
+    this.reads.delete(key);
+    this.reads.set(key, result);
+    if (this.reads.size > READS_KEPT) this.reads.delete(this.reads.keys().next().value);
+    return result;
   }
 }

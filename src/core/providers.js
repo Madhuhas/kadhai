@@ -215,12 +215,21 @@ async function send(route, req, body, { signal, onDelta, timeoutMs }) {
   }
 }
 
+/** The messages with the request's images ([{ mime, data: base64 }]) put on the last user message, as image parts. */
+function withImages(messages, images) {
+  const at = images?.length ? messages.findLastIndex((m) => m.role === 'user') : -1;
+  if (at < 0) return messages;
+  const out = [...messages];
+  out[at] = { ...out[at], content: [{ type: 'text', text: out[at].content }, ...images.map((image) => ({ type: 'image_url', image_url: { url: `data:${image.mime};base64,${image.data}` } }))] };
+  return out;
+}
+
 /** One streaming chat completion against one route. Throws ProviderError on any failure. */
 export async function chatCompletion(route, req, opts = {}) {
   // What this route turned out not to accept, learned the first time it said so (see below).
   const quirks = (route.quirks ??= {});
   const build = () => {
-    const body = { model: route.model, messages: req.messages, stream: true };
+    const body = { model: route.model, messages: withImages(req.messages, req.images), stream: true };
     if (!quirks.noTemperature) body.temperature = req.temperature ?? 0.2;
     body[quirks.completionTokens ? 'max_completion_tokens' : 'max_tokens'] = req.maxTokens;
     if (!quirks.bare) body.stream_options = { include_usage: true };

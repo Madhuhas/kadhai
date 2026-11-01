@@ -3,6 +3,7 @@ import { watch as fsWatch, realpathSync } from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { sleep } from './util.js';
+import { isKnownBinary } from './fileText.js';
 
 export const MEMORY_FILE = 'memory.md';
 const INTERNAL_DIR = '.kadhai';
@@ -163,7 +164,8 @@ export class Workspace {
       // Only what was really read: a file that shrank since stat() must not end in zero bytes.
       const read = await fh.read(Buffer.alloc(length), 0, length, 0);
       const buffer = read.buffer.subarray(0, read.bytesRead);
-      const binary = buffer.subarray(0, 8192).includes(0);
+      // A PDF can be plain ASCII for its first pages of bytes: known formats count as binary by how they start.
+      const binary = buffer.subarray(0, 8192).includes(0) || isKnownBinary(buffer);
       return {
         path: rel,
         size: st.size,
@@ -175,6 +177,21 @@ export class Workspace {
     } finally {
       await fh.close();
     }
+  }
+
+  /** A whole file as bytes, for reading formats that are not text (fileText.js). Refused past `maxBytes`. */
+  async readBytes(relPath, maxBytes) {
+    const { rel, abs } = this.resolve(relPath);
+    await this.#guardLinks(abs);
+    let st;
+    try {
+      st = await fs.stat(abs);
+    } catch {
+      throw new WorkspaceError(`"${rel}" does not exist`, 404);
+    }
+    if (!st.isFile()) throw new WorkspaceError(`"${rel}" is not a file`);
+    if (st.size > maxBytes) throw new WorkspaceError(`"${rel}" is larger than ${Math.round(maxBytes / 1048576)} MB`, 413);
+    return fs.readFile(abs);
   }
 
   /**

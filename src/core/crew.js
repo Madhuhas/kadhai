@@ -487,7 +487,7 @@ export class Crew {
    * `user` may be an async function; it is re-evaluated on every provider
    * attempt so a hot-swapped model starts from the current memory.md.
    */
-  async call(id, { system, user, json = false, task = '', signal, maxTokens }) {
+  async call(id, { system, user, json = false, task = '', signal, maxTokens, images }) {
     const agent = this.get(id);
     await this.#waitWhilePaused(agent, signal);
 
@@ -514,6 +514,7 @@ export class Crew {
         {
           json,
           maxTokens,
+          images, // only a model that can see is given these (Dispatcher.#pick)
           build: async () => [
             { role: 'system', content: system + skills },
             { role: 'user', content: (typeof user === 'function' ? await user() : user) + noteBlock },

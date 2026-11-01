@@ -5,7 +5,7 @@ export class DispatchError extends Error {
   constructor(code, message, extra = {}) {
     super(message);
     this.name = 'DispatchError';
-    this.code = code; // NO_PROVIDERS | RATE_LIMITED | EXHAUSTED | BUDGET
+    this.code = code; // NO_PROVIDERS | NO_VISION | RATE_LIMITED | EXHAUSTED | BUDGET
     Object.assign(this, extra);
   }
 }
@@ -49,6 +49,7 @@ export class Dispatcher {
             command: p.command, // only for tests: another program standing in for the CLI
             api: p.api ?? 'openai',
             paid: Boolean(p.paid), // billed per call: counted against the daily limit
+            vision: Boolean(p.vision) && (p.kind ?? 'api') !== 'cli', // takes images in a request (a CLI runs with its tools off: it never does)
             label: `${p.label}${keyTag}`,
             baseUrl: p.baseUrl,
             key,
@@ -80,6 +81,7 @@ export class Dispatcher {
       provider: route.provider,
       kind: route.kind,
       paid: route.paid,
+      vision: route.vision,
       overBudget: this.#overBudget(route),
       label: route.label,
       model: route.model,
@@ -154,10 +156,10 @@ export class Dispatcher {
    * `prefer` ("<provider>/<model>") is tried before anything else while it is usable;
    * when it is not, the normal order takes over, so failover still works.
    */
-  #pick(skipped, tier, prefer) {
+  #pick(skipped, tier, prefer, vision = false) {
     const now = Date.now();
-    // A paid route that has used up today's limit sits out; the free ones carry on.
-    const usable = (r) => !r.disabled && r.cooldownUntil <= now && !skipped.has(r) && !this.#overBudget(r);
+    // A paid route that has used up today's limit sits out; the free ones carry on. A request with images goes only to a model that sees.
+    const usable = (r) => !r.disabled && r.cooldownUntil <= now && !skipped.has(r) && !this.#overBudget(r) && (!vision || r.vision);
     // High flame: paid keys and subscriptions first (the strong models), then the free ones;
     // light work is not sent to the weakest model there. Low flame: the table as it is.
     const strong = (r) => r.paid || r.kind === 'cli';
@@ -211,16 +213,22 @@ export class Dispatcher {
   }
 
   /**
-   * req: { messages | build(), json, maxTokens, temperature }
+   * req: { messages | build(), json, maxTokens, temperature, images? }
+   * `images` ([{ mime, data: base64 }], sent with the last user message) are only ever sent to a route marked `vision`.
    * `build` is re-run on every attempt, so an incoming provider always gets a
    * freshly read memory.md rather than a stale copy.
    */
   async chat(req, { agent, role, tier, prefer, signal, onDelta, onRoute, onWait } = {}) {
+    const vision = Boolean(req.images?.length);
     if (!this.routes.length) {
       throw new DispatchError(
         'NO_PROVIDERS',
         'No models to call yet. Add a free API key or switch on a subscription with the keys button in the dashboard, or try the offline demo with "npm run demo".',
       );
+    }
+
+    if (vision && !this.routes.some((r) => r.vision)) {
+      throw new DispatchError('NO_VISION', 'No model that can look at images is set up. A free Gemini key can (keys button); or paste the text into the chat instead.');
     }
 
     const skipped = new Set();
@@ -229,10 +237,10 @@ export class Dispatcher {
 
     for (;;) {
       signal?.throwIfAborted();
-      const route = this.#pick(skipped, tier, prefer);
+      const route = this.#pick(skipped, tier, prefer, vision);
 
       if (!route) {
-        const live = this.routes.filter((r) => !r.disabled && !skipped.has(r));
+        const live = this.routes.filter((r) => !r.disabled && !skipped.has(r) && (!vision || r.vision));
         const waiting = live.filter((r) => !this.#overBudget(r));
         if (!waiting.length && live.length) {
           throw new DispatchError('BUDGET', `Today's limit for paid models (${this.paidBudget.toLocaleString('en-US')} tokens) is used up, and there is no free route to fall back on. Raise the limit under keys, or add a free key.`);

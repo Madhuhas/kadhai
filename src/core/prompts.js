@@ -6,7 +6,20 @@
 const fileBlock = (f) =>
   f.missing
     ? `### ${f.path}\n(does not exist yet)`
-    : `### ${f.path}${f.truncated ? ' (CLIPPED - only the start is shown; change it with EDIT blocks only, never a FILE block)' : ''}\n\`\`\`\n${f.content}\n\`\`\``;
+    : f.converted
+      ? `### ${f.path} (${f.converted}: what was read from it is below${f.truncated ? ', only the start' : ''}; the file itself cannot be edited)\n\`\`\`\n${f.content}\n\`\`\``
+      : `### ${f.path}${f.truncated ? ' (CLIPPED - only the start is shown; change it with EDIT blocks only, never a FILE block)' : ''}\n\`\`\`\n${f.content}\n\`\`\``;
+
+/** Writing down an attached image (or a scanned page) once, so a crew of text-only models can use it. */
+export const readerSystem = () =>
+  [
+    'You write down what an image shows, for coworkers who cannot see it.',
+    'First every piece of text in it, exactly as written and in reading order, keeping headings, lists and tables (as Markdown).',
+    "Then, briefly, whatever else matters for building from it: layout, colours, a chart's values, a diagram's parts, a photo's subject.",
+    'Text you cannot make out is written [unreadable] - never guess it. No preamble, no closing remarks.',
+  ].join('\n');
+
+export const readerUser = (path, page) => `The image is ${path}${page ? `, page ${page}` : ''}. Write down what it shows.`;
 
 /**
  * The skills an agent has loaded, appended to its system prompt. Each body is

@@ -49,7 +49,7 @@ export const licenseText = () => fs.readFileSync(path.join(ROOT, 'LICENSE'), 'ut
  * and its default models taken from the provider's live /models in October 2026.
  */
 /** The simulated models of demo mode: canned answers from mockProvider.js, no key, nothing sent anywhere. */
-export const MOCK_PROVIDERS = [{ id: 'mock', label: 'Mock', baseUrl: 'mock://local', keys: ['demo'], models: ['alpha', 'beta'] }];
+export const MOCK_PROVIDERS = [{ id: 'mock', label: 'Mock', baseUrl: 'mock://local', keys: ['demo'], models: ['alpha', 'beta'], vision: true }];
 
 export const PROVIDER_PRESETS = {
   gemini: {
@@ -58,6 +58,7 @@ export const PROVIDER_PRESETS = {
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
     models: ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'],
     freeTier: '15 requests/min, 1,500/day',
+    vision: true, // every Gemini model takes images, also through this OpenAI-style endpoint
   },
   groq: {
     label: 'Groq',
@@ -143,6 +144,7 @@ export const PROVIDER_PRESETS = {
     models: ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-4-5'],
     prefix: 'sk-ant-',
     paid: true,
+    vision: true,
   },
   openai: { label: 'OpenAI', keyUrl: 'https://platform.openai.com/api-keys', baseUrl: 'https://api.openai.com/v1', models: [], prefix: 'sk-proj-', paid: true },
   xai: { label: 'xAI (Grok)', keyUrl: 'https://console.x.ai', baseUrl: 'https://api.x.ai/v1', models: [], prefix: 'xai-', paid: true },
@@ -225,6 +227,7 @@ export function providerCatalog(keysFile) {
         verifyUrl: preset.verifyUrl,
         extra: Boolean(preset.extra),
         paid: Boolean(preset.paid),
+        vision: Boolean(preset.vision),
         api: preset.api ?? 'openai',
         own: Boolean(preset.own),
         keyless: Boolean(preset.keyless),
@@ -260,7 +263,7 @@ function readApiProviders(keysFile) {
     // A keyless custom endpoint (local Ollama, LM Studio) is still a valid provider.
     if ((p.id === 'custom' || p.keyless) && p.baseUrl && !keys.length) keys = [''];
     if (!p.baseUrl || !keys.length || !p.models.length) return [];
-    return [{ id: p.id, label: p.label, baseUrl: p.baseUrl, keys, models: p.models, paid: p.paid, api: p.api }];
+    return [{ id: p.id, label: p.label, baseUrl: p.baseUrl, keys, models: p.models, paid: p.paid, api: p.api, vision: p.vision }];
   });
   // Paid keys go before the free ones, or after them as a fallback: the user's choice (keys dialog).
   const paidFirst = loadStoredKeys(keysFile).settings.paidOrder !== 'last';

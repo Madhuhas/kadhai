@@ -1138,7 +1138,7 @@ test('attachments: files sent with a task are shown to the Chef up front and nam
   assert.equal(result.ok, true, result.reply);
   assert.match(managerPrompt, /Files the user attached/);
   assert.match(managerPrompt, /Build a todo app with tags\./);
-  assert.match(managerPrompt, /\(binary file\)/, 'a binary attachment is named, not dumped');
+  assert.match(managerPrompt, /logo\.png \(image[^\n]*\n```\n\(not read: No model that can look at images/, 'a picture is named, not dumped, and says why it was not read');
   assert.match(engine.orchestrator.chat.find((m) => m.role === 'user').text, /Attached: attachments\/spec\.md, attachments\/logo\.png/);
 
   // Without attachments nothing changes.
