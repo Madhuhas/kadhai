@@ -12,6 +12,10 @@ import { Terminal } from './vt.js';
  */
 
 const shells = new Map(); // id -> { term, title, ended, queue }
+// Output of a shell this page has no tab for yet: a new shell's first prompt can arrive before the
+// answer to "open one" does. Kept a little while, a little of it, for the tab that is about to appear.
+const early = new Map(); // id -> text
+const EARLY_KEPT = 64 * 1024;
 let active = 'commands';
 let status = { available: false, reason: 'Checking...', shell: '' };
 let resizeTimer = null;
@@ -110,7 +114,11 @@ async function openShell() {
   views.hidden = false;
   try {
     const opened = await api.ptyOpen({ cols: 100, rows: 30 });
-    if (!shells.has(opened.id)) add(opened.id, opened.title);
+    if (!shells.has(opened.id)) {
+      const s = add(opened.id, opened.title);
+      if (early.has(opened.id)) s.term.write(early.get(opened.id));
+    }
+    early.delete(opened.id);
     select(opened.id);
   } catch (err) {
     toast(err.message, 'err');
@@ -146,6 +154,7 @@ async function refresh() {
   // Shells still open on the server (this page was reloaded): pick them up with what they showed.
   for (const open of status.open ?? []) {
     if (shells.has(open.id)) continue;
+    early.delete(open.id); // the replay below holds it
     const s = add(open.id, open.title);
     const { data } = await api.ptyReplay(open.id).catch(() => ({ data: '' }));
     s.term.write(data);
@@ -161,6 +170,10 @@ export function initShell() {
   on('pty', (event) => {
     const s = shells.get(event.id);
     if (event.type === 'output' && s) s.term.write(event.data);
+    else if (event.type === 'output') {
+      if (!early.has(event.id) && early.size >= 8) early.delete(early.keys().next().value);
+      early.set(event.id, `${early.get(event.id) ?? ''}${event.data}`.slice(-EARLY_KEPT));
+    } else if (event.type === 'exit' && !s) early.delete(event.id);
     else if (event.type === 'exit' && s && !s.ended) {
       s.ended = true;
       s.term.write(`\r\n\x1b[2m[the shell has ended${event.code != null ? ` (exit code ${event.code})` : ''}]\x1b[0m\r\n`);

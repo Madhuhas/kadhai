@@ -185,7 +185,8 @@ function askCard(message) {
     const text = skipped || !picked.some(Boolean) ? `${message.request}\n\nNo preferences: choose sensible defaults.` : `${message.request}\n\nMy answers:\n${lines.join('\n')}`;
     lock();
     try {
-      if ((await api.task(text, [], false, true)).queued) toast('Queued. It starts when the current task finishes');
+      // The attachments go back with it, so the Chef reads them again (the request only names them).
+      if ((await api.task(text, Array.isArray(message.attachments) ? message.attachments : [], false, true)).queued) toast('Queued. It starts when the current task finishes');
     } catch (err) {
       for (const el of card.querySelectorAll('button, input')) el.disabled = false;
       card.classList.remove('done');

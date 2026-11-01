@@ -78,7 +78,8 @@ for (const file of files) {
   };
   const matches = [];
   let m;
-  while ((m = re.exec(file.text)) && matches.length < perFile && total < maxMatches) {
+  // The limits first: an exec() in front of them would use up the match that says "there are more".
+  while (matches.length < perFile && total < maxMatches && (m = re.exec(file.text))) {
     if (!m[0]) { re.lastIndex++; continue; }
     const line = lineOf(m.index);
     const start = lineStarts[line];
@@ -90,7 +91,7 @@ for (const file of files) {
     matches.push({ line: line + 1, col: col + 1, length: Math.min(m[0].length, full.length - col), text: full.slice(from, from + preview), at: col - from, cut: from > 0 });
     total++;
   }
-  if (matches.length) out.push({ path: file.path, matches, more: re.exec(file.text) !== null && matches.length >= perFile });
+  if (matches.length) out.push({ path: file.path, matches, more: matches.length >= perFile && re.exec(file.text) !== null });
   if (total >= maxMatches) break;
 }
 parentPort.postMessage({ out, full: total >= maxMatches });
@@ -159,11 +160,18 @@ export async function replaceInWorkspace(workspace, opts, replacement, { owner =
   const re = patternOf(opts);
   const { files } = await textFiles(workspace, opts);
   const { out } = await inWorker({ source: re.source, flags: re.flags, files, replace: String(replacement ?? ''), perFile: PER_FILE, maxMatches: MAX_MATCHES, preview: PREVIEW });
+  const original = new Map(files.map((f) => [f.path, f.text]));
   const changed = [];
   const failed = [];
   for (const file of out) {
     try {
-      await workspace.writeFile(file.path, file.text, { owner, timeoutMs: 1500 });
+      // Read again under the lock: a file the crew changed while the matching ran is left alone, never overwritten
+      // with a replacement made from its older text. (Locks are re-entrant per owner, so writeFile takes the same one.)
+      await workspace.locks.withLock(file.path, owner, async () => {
+        const now = await workspace.readFile(file.path);
+        if (now.content !== original.get(file.path)) throw new Error('it changed while the search ran: search again');
+        await workspace.writeFile(file.path, file.text, { owner, timeoutMs: 1500 });
+      }, { timeoutMs: 1500 });
       changed.push({ path: file.path, count: file.count });
     } catch (err) {
       failed.push({ path: file.path, error: err.message });

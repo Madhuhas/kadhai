@@ -141,3 +141,13 @@ test('routes: quick open, search, replace and problems answer over HTTP', async 
   assert.equal(problems[0].source, 'JSON');
   assert.equal((await send('POST', '/problems/scan')).problems.length, 1);
 });
+
+test('dispatcher: when every model is resting after a timeout, the run says so (not "rate-limited")', async () => {
+  const { Dispatcher } = await import('../src/core/dispatcher.js');
+  const { ProviderError } = await import('../src/core/providers.js');
+  const completion = async (route) => {
+    throw new ProviderError(`${route.label} timed out`, { kind: 'timeout' });
+  };
+  const d = new Dispatcher({ config: { providers: FAKE_PROVIDER, limits: { maxOutputTokens: 100, requestTimeoutMs: 1000, maxRateWaitMs: 1000 } }, completion });
+  await assert.rejects(d.chat({ messages: [{ role: 'user', content: 'hi' }] }), (err) => err.code === 'RATE_LIMITED' && /took too long to answer/.test(err.message) && !/rate-limited/.test(err.message));
+});

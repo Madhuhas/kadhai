@@ -60,7 +60,8 @@ export function createEditor({ text = '', ext = '', readOnly = false, onDirty, o
   let find = { query: '', matchCase: false, wholeWord: false, regex: false, matches: [], at: -1, error: '' };
 
   // ------------------------------------------------------------------ the DOM
-  const input = h('textarea', { class: 'ed-input', wrap: 'off', spellcheck: false, autocapitalize: 'off', autocomplete: 'off', ariaLabel: 'Code', ariaMultiLine: 'true' });
+  // Writing helpers (Grammarly) hook into every textarea and draw over it or rewrite it: code is kept out of their reach.
+  const input = h('textarea', { class: 'ed-input', wrap: 'off', spellcheck: false, autocapitalize: 'off', autocomplete: 'off', ariaLabel: 'Code', ariaMultiLine: 'true', 'data-gramm': 'false', 'data-gramm_editor': 'false', 'data-enable-grammarly': 'false' });
   input.value = saved;
   input.readOnly = readOnly;
   input.spellcheck = false; // h() skips false values, so this is set here
@@ -106,7 +107,8 @@ export function createEditor({ text = '', ext = '', readOnly = false, onDirty, o
     code.innerHTML = `${highlight(value, ext)}\n`;
     const lines = value.split('\n').length;
     const bad = new Set(problems.map((p) => p.line));
-    if (bad.size) gutter.innerHTML = Array.from({ length: lines }, (_, i) => (bad.has(i + 1) ? `<span class="ed-bad">${i + 1}</span>` : String(i + 1))).join('\n');
+    // DOM nodes, not innerHTML (only mdLite, highlight and renderDiff build markup).
+    if (bad.size) gutter.replaceChildren(...Array.from({ length: lines }, (_, i) => [i ? '\n' : '', bad.has(i + 1) ? h('span', { class: 'ed-bad' }, String(i + 1)) : String(i + 1)]).flat().filter((part) => part !== ''));
     else gutter.textContent = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
     drawLayer();
     status();

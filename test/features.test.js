@@ -1048,6 +1048,12 @@ test('an inline check that crashes in its own code proves nothing; one whose ass
   const wrong = await runWith(`node -e "require('assert').equal(require('child_process').execSync('node p.js', { encoding: 'utf8' }).trim(), '2 3 5 7')"`);
   assert.equal(wrong.ok, false, 'a real mismatch is a real failure');
   assert.match(wrong.reply, /FAILED/);
+
+  // A TypeError from the folder's own code - a function it does not export - is the work's fault, not the check's.
+  const missing = await runWith(`node -e "if (require('./p.js').add(1, 2) !== 3) process.exit(1)"`);
+  assert.equal(missing.ok, false, 'a missing export is a real failure');
+  assert.match(missing.reply, /FAILED/);
+  assert.doesNotMatch(missing.reply, /itself crashed/);
 });
 
 test('the Chef plans a new request with that request as the objective, not the last run\'s', async (t) => {

@@ -143,6 +143,7 @@ export class Orchestrator {
     const run = {
       id: crypto.randomUUID().slice(0, 8),
       request: text,
+      typed, // without the "Attached:" line: what the Chef's questions are sent back with
       source,
       attachments: attached,
       // A flow step may pin who cooks and which connections may be used; the plan is still the Chef's.
@@ -262,7 +263,7 @@ export class Orchestrator {
     this.crew.settle();
     // What a run cost is kept in the journal; the chat shows usage live in the dashboard's usage bar instead.
     // Questions travel with the message, and so does the request they are about: the answers are sent back with it.
-    this.say('manager', result.reply, { runId: run.id, ok: result.ok, ...(result.ask ? { ask: result.ask, request: run.request } : {}) });
+    this.say('manager', result.reply, { runId: run.id, ok: result.ok, ...(result.ask ? { ask: result.ask, request: run.typed, attachments: run.attachments } : {}) });
     this.bus.publish('run:done', result);
     this.bus.publish('runs:update', { runs: this.runsView() });
 
@@ -755,7 +756,10 @@ export class Orchestrator {
       // returned a Buffer, ".trim is not a function", and three agents ran it five times "fixing" right code).
       // Only a crash whose first frame is the check itself; an assertion or a thrown Error there is a real result.
       const crash = run.code !== 0 && /^\s*node\s+(-e|--eval|-p|--print)\b/.test(command) ? /^((?:Syntax|Reference|Type)Error: .*)\n\s+at [^\n]*\[eval\]/m.exec(run.output ?? '') : null;
-      if (crash) return { command, ran: false, ok: false, text: `not run: the check command itself crashed (${clip(crash[1], 160)})` };
+      // But a TypeError in a check that loads the folder's own code ("require('./calc').add is not a function")
+      // is most often that code's fault - a missing export - and must stay a real failure (found in a review).
+      const ownCode = /\b(?:require|import)\s*\(\s*['"`]\.{1,2}\//.test(command);
+      if (crash && !(ownCode && crash[1].startsWith('TypeError'))) return { command, ran: false, ok: false, text: `not run: the check command itself crashed (${clip(crash[1], 160)})` };
       return { command, ran: true, ok: run.code === 0, text };
     } catch (err) {
       if (signal.aborted) throw err;
@@ -1047,8 +1051,8 @@ export class Orchestrator {
           outcome.errors.push(...problems);
           // A look-up step's answer is the point of it: rounds ending on an unanswered look-up is no answer
           // (seen: four failed web searches, the step ticked done with "searched for the weather" as its summary).
+          // (A look-up step that answered without looking is already in `problems`, above.)
           if (lastRound && requests && !subtask.files.length) outcome.errors.push('it ran out of rounds before its last look-up was answered');
-          else if (mustLook && !looked && !problems.length) outcome.errors.push('it answered without looking anything up');
           break;
         }
         if (problems.length) {

@@ -94,6 +94,7 @@ export class Terminals {
       if (!term.timer) term.timer = setTimeout(() => this.#flush(id), FLUSH_MS);
     });
     pty.onExit(({ exitCode }) => {
+      if (this.#open.get(id) !== term) return; // closed from here: close() has said so already
       this.#flush(id);
       this.#open.delete(id);
       this.bus.publish('pty:exit', { id, code: exitCode });
@@ -144,6 +145,10 @@ export class Terminals {
   close(id) {
     const term = this.#get(id);
     const pid = term.pty.pid;
+    // What it printed last still reaches the screen; then it is gone from the list, so its own exit says nothing more.
+    this.#flush(String(id));
+    clearTimeout(term.timer);
+    this.#open.delete(String(id));
     // node-pty's own kill first: on Windows it asks the console which processes share it, and
     // that fails noisily ("AttachConsole failed") once the tree is already gone.
     try {
@@ -152,9 +157,8 @@ export class Terminals {
       // already gone
     }
     // Then the tree, for anything that left the console: a dev server started from it goes too.
-    killTree({ pid, exitCode: null, signalCode: null });
-    clearTimeout(term.timer);
-    this.#open.delete(String(id));
+    // killTree falls back on child.kill() when the group is already gone (ESRCH): node-pty's kill above did that part.
+    killTree({ pid, exitCode: null, signalCode: null, kill: () => {} });
     this.bus.publish('pty:exit', { id: String(id), code: null });
   }
 

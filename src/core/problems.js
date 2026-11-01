@@ -43,8 +43,9 @@ function jsonProblem(path, text) {
  */
 function nodeCheck(path, content) {
   const module = /\.mjs$/i.test(path) || (!/\.cjs$/i.test(path) && /^\s*(import\s*[\w{*'"]|export\s)/m.test(content));
+  // Inside the desktop app process.execPath is Electron: run it as Node.js, as Rooms does for its children.
   return new Promise((resolve) => {
-    const child = execFile(process.execPath, ['--check', `--input-type=${module ? 'module' : 'commonjs'}`, '-'], { timeout: CHECK_TIMEOUT_MS, windowsHide: true, env: { PATH: process.env.PATH ?? '', SystemRoot: process.env.SystemRoot ?? '' } }, (err, _out, stderr) => {
+    const child = execFile(process.execPath, ['--check', `--input-type=${module ? 'module' : 'commonjs'}`, '-'], { timeout: CHECK_TIMEOUT_MS, windowsHide: true, env: { PATH: process.env.PATH ?? '', SystemRoot: process.env.SystemRoot ?? '', ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}) } }, (err, _out, stderr) => {
       if (!err) return resolve([]);
       if (err.killed) return resolve([]); // too slow to say: report nothing rather than a guess
       // [stdin]:3

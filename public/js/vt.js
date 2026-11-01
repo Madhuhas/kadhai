@@ -506,7 +506,8 @@ export class Terminal {
     this.screen = new Screen(80, 24, (text) => reply(text));
     this.rowsEl = h('div', { class: 'vt-screen' });
     this.backEl = h('div', { class: 'vt-back' });
-    this.input = h('textarea', { class: 'vt-input', ariaLabel: 'Terminal input', autocapitalize: 'off', autocomplete: 'off' });
+    // Writing helpers (Grammarly) hook into every textarea and swallow or rewrite keys: kept out of this one.
+    this.input = h('textarea', { class: 'vt-input', ariaLabel: 'Terminal input', autocapitalize: 'off', autocomplete: 'off', 'data-gramm': 'false', 'data-gramm_editor': 'false', 'data-enable-grammarly': 'false' });
     this.input.spellcheck = false;
     this.probe = h('span', { class: 'vt-probe', ariaHidden: 'true' }, 'W'.repeat(50));
     this.el = h('div', { class: 'vt', tabIndex: -1 }, this.backEl, this.rowsEl, this.input, this.probe);

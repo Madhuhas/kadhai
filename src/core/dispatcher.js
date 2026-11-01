@@ -252,9 +252,13 @@ export class Dispatcher {
         const waitMs = Math.max(0, wakeAt - Date.now());
         // How patient to be with rate limits is the flame's call: high flame's bigger prompts meet them more often.
         if (waitMs > this.limits.maxRateWaitMs || waits >= (this.limits.rateWaits ?? 3)) {
+          // Say why they are resting: a model that kept the crew waiting (timed out) is not a rate limit.
+          const slow = waiting.every((r) => /timed out/i.test(r.lastError ?? ''));
           throw new DispatchError(
             'RATE_LIMITED',
-            `Every free provider is rate-limited right now. Next slot opens in about ${Math.ceil(waitMs / 1000)}s.`,
+            slow
+              ? `Every model took too long to answer and is resting for a while. The next one is tried again in about ${Math.ceil(waitMs / 60000)} min; a faster model, or low flame, helps.`
+              : `Every free provider is rate-limited right now. Next slot opens in about ${Math.ceil(waitMs / 1000)}s.`,
             { retryAt: wakeAt },
           );
         }
