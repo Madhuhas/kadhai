@@ -371,6 +371,30 @@ Good to know: a shell is yours, exactly like one you open on your computer. The 
 
 Under the files panel: the folder's own git repository. See what changed, click a file for its diff, stage and unstage, discard a change, write a message and **Commit**, switch or create branches, **Pull** and **Push**. If the folder is not a repository yet, one click creates one. This uses your installed git with your own name and sign-in, and never adds commits by itself. Discard, switching branch and pull are refused while a run is in progress.
 
+### In the terminal: the kadhai command
+
+Kadhai also works from a terminal, without the dashboard. Once, in the Kadhai folder:
+
+```bash
+npm link
+```
+
+Then, in any project folder:
+
+| You type | What happens |
+|---|---|
+| `kadhai` | A prompt in this folder. Type what you want built; the plan, each step, the commands and the Chef's answer appear as the crew works. |
+| `kadhai "add a dark mode"` | One task, then it exits: `0` done, `1` not done, `2` could not run. Handy in scripts. |
+| `kadhai "make a site from this" -a resume.pdf` | Attach files, as in the chat (`-a` again for more). |
+| `kadhai --flame high "..."` | High flame for this task. |
+| `kadhai --demo` | Simulated models, no keys needed. |
+
+**Commands still ask first.** When a cook wants to run one, the terminal asks `run it? [y/N]`. `--yes` allows them without asking (only in a folder you trust). Without a terminal to ask in (a script), they are refused, unless the dashboard is open to approve them.
+
+Inside the prompt: `/status` (models, flame, what is running), `/crew`, `/flame low|high`, `/attach <file>` (goes with your next message), `/diff` and `/undo` (the last run), `/stop`, `/quit`. `Ctrl+C` stops a run in progress; on an empty prompt it leaves. When the Chef asks questions before building, you answer each with a number or your own words.
+
+**With the dashboard open.** If Kadhai is already running with this folder open, `kadhai` joins it instead of starting a second crew: the dashboard shows what you asked in the terminal, live, and the other way round, and a command can be approved in either place. Otherwise `kadhai` runs a crew of its own for the folder, with your keys and settings, and stops it when you leave. While it does, the dashboard will not open that same folder (one folder, one crew).
+
 ---
 
 ## 9. Flows: automations on a canvas

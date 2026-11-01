@@ -48,6 +48,16 @@ npm start
 
 The **keys** dialog opens by itself. Paste a free key from [Google AI Studio](https://aistudio.google.com/apikey), [Groq](https://console.groq.com/keys) or [Cerebras](https://cloud.cerebras.ai); it is checked and used straight away. Keys from two or more providers give the smoothest failover.
 
+**In the terminal**, too: `npm link` once in the kadhai folder, then in any project folder:
+
+```bash
+kadhai                         # a prompt: type what to build, /help for the rest
+kadhai "add a dark mode"       # one task, then exit
+kadhai "make a site from this" -a resume.pdf
+```
+
+If the dashboard already has that folder open, `kadhai` joins it: one crew, seen from both places.
+
 ## Documentation
 
 | Guide | For |

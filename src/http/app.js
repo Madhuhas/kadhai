@@ -11,6 +11,7 @@ import { escapeHtml, log } from '../core/util.js';
 import { licenseText } from '../config.js';
 import { replaceInWorkspace, searchWorkspace } from '../core/search.js';
 import { checkAll, checkFile } from '../core/problems.js';
+import { saveAttachment } from '../core/attachments.js';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const hostOf = (value) => String(value ?? '').replace(/:\d+$/, '').toLowerCase();
@@ -85,8 +86,6 @@ const callbackPage = (title, detail, ok) => `<!doctype html><meta charset="utf-8
 <p style="margin:0;color:#666">${detail}</p>
 </div></div></body>`;
 
-const ATTACH_DIR = 'attachments';
-const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024; // as base64 this still fits the 4 MB JSON limit
 
 export function apiRouter(engine) {
   const { workspace, crew, dispatcher, orchestrator, memory, bus, runner, keys, hiring, git, mcp, connectors, triggers, flows, credentials, skills, journal } = engine;
@@ -174,16 +173,8 @@ export function apiRouter(engine) {
     '/attach',
     wrap(async (req, res) => {
       const { name, data } = req.body ?? {};
-      const safe = String(name ?? '').replace(/[^\w.\- ]+/g, '_').replace(/^[. ]+/, '').slice(-80).trim();
-      if (!safe || typeof data !== 'string') return res.status(400).json({ error: 'An attachment needs a name and its contents' });
-      const bytes = Buffer.from(data, 'base64');
-      if (!bytes.length) return res.status(400).json({ error: `"${safe}" is empty` });
-      if (bytes.length > MAX_ATTACHMENT_BYTES) return res.status(413).json({ error: `"${safe}" is larger than 2 MB` });
-      const dot = safe.lastIndexOf('.');
-      const [stem, ext] = dot > 0 ? [safe.slice(0, dot), safe.slice(dot)] : [safe, ''];
-      let rel = `${ATTACH_DIR}/${safe}`;
-      for (let n = 2; await workspace.exists(rel); n++) rel = `${ATTACH_DIR}/${stem}-${n}${ext}`;
-      res.status(201).json({ ...(await workspace.writeFile(rel, bytes, { owner: 'user', timeoutMs: 1500 })), bytes: bytes.length });
+      if (typeof data !== 'string') return res.status(400).json({ error: 'An attachment needs a name and its contents' });
+      res.status(201).json(await saveAttachment(workspace, name, Buffer.from(data, 'base64')));
     }),
   );
 
